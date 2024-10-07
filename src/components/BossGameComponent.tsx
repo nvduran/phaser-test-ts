@@ -1,9 +1,7 @@
-// PongGameComponent.tsx
-
 import React, { useEffect, useRef } from 'react';
-import { initializeGame } from './PongGame'; // Adjust the import path as necessary
+import { initializeGame } from './BossFightGame'; // Adjust the import path as necessary
 
-const PongGameComponent: React.FC = () => {
+const BossGameComponent: React.FC = () => {
     const gameContainerRef = useRef<HTMLDivElement>(null);
     const phaserGameRef = useRef<Phaser.Game | null>(null);
 
@@ -30,4 +28,4 @@ const PongGameComponent: React.FC = () => {
     );
 };
 
-export default PongGameComponent;
+export default BossGameComponent;
