@@ -77,19 +77,26 @@ class PongGame extends Phaser.Scene {
     }
 
     update(time: number, delta: number) {
-        // Move left paddle with up and down arrow keys
+        // Move left paddle with arrow keys
         if (this.cursors.up.isDown) {
             this.leftPaddle.y -= 5;
         } else if (this.cursors.down.isDown) {
             this.leftPaddle.y += 5;
         }
+
+        if (this.cursors.left.isDown) {
+            this.leftPaddle.x -= 5;
+        } else if (this.cursors.right.isDown) {
+            this.leftPaddle.x += 5;
+        }
+
         // Update left paddle physics body
         (this.leftPaddle.body as Phaser.Physics.Arcade.StaticBody).updateFromGameObject();
 
         if (this.ballInPlay) {
             // Ball follows the right paddle like a missile
             const ballBody = this.ball.body as Phaser.Physics.Arcade.Body;
-            const speed = 200; // Adjust speed as necessary
+            const speed = 600; // Adjust speed as necessary
             const dx = this.rightPaddle.x - this.ball.x;
             const dy = this.rightPaddle.y - this.ball.y;
             const angle = Math.atan2(dy, dx);
@@ -107,6 +114,13 @@ class PongGame extends Phaser.Scene {
             this.leftPaddle.height / 2,
             this.scale.height - this.leftPaddle.height / 2
         );
+
+        this.leftPaddle.x = Phaser.Math.Clamp(
+            this.leftPaddle.x,
+            this.leftPaddle.width / 2,
+            this.scale.width - this.leftPaddle.width / 2
+        );
+
         this.rightPaddle.y = Phaser.Math.Clamp(
             this.rightPaddle.y,
             this.rightPaddle.height / 2,
