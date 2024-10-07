@@ -82,7 +82,7 @@ class PongGame extends Phaser.Scene {
         this.ballInPlay = false;
     }
 
-    update(time: number, delta: number) {
+    update() {
         // Move left paddle with WASD keys
         if (this.keys.up.isDown) {
             this.leftPaddle.y -= 3;
