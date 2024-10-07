@@ -1,3 +1,5 @@
+// BossGameComponent.tsx
+
 import React, { useEffect, useRef } from 'react';
 import { initializeGame } from './BossFightGame'; // Adjust the import path as necessary
 

@@ -1,3 +1,5 @@
+// BossFightGame.ts
+
 import Phaser from 'phaser';
 
 class BossFightGame extends Phaser.Scene {
@@ -6,13 +8,14 @@ class BossFightGame extends Phaser.Scene {
     private projectile!: Phaser.GameObjects.Arc;
     private keys!: any; // Updated to use WASD keys
     private projectileLaunched: boolean = false;
-    private bossHitCount: number = 0; // Counter variable
-    private hitCountText!: Phaser.GameObjects.Text; // Text object to display the counter
     private barrier!: Phaser.GameObjects.Image; // Barrier with rounded corners
     private bossSpeed: number = 50; // pixels per second
     private bossDirection: number = 0; // 1 for down, -1 for up, 0 for stopped
     private bossChangeDirectionTimer: number = 0; // time accumulator
     private bossChangeDirectionInterval: number = 2000; // time in milliseconds
+    private bossHealth: number = 20; // Current health
+    private bossMaxHealth: number = 20; // Maximum health
+    private bossHealthBar!: Phaser.GameObjects.Graphics; // Health bar graphics
 
     constructor() {
         super({ key: 'BossFightGame' });
@@ -80,11 +83,9 @@ class BossFightGame extends Phaser.Scene {
             this.projectileLaunched = true;
         });
 
-        // Create a text object to display the hit count
-        this.hitCountText = this.add.text(10, 10, 'Hits: 0', {
-            fontSize: '20px',
-            color: '#ffffff',
-        });
+        // Initialize the boss health bar
+        this.bossHealthBar = this.add.graphics();
+        this.updateBossHealthBar(); // Draw the initial health bar
     }
 
     private createBarrier() {
@@ -98,7 +99,7 @@ class BossFightGame extends Phaser.Scene {
         const barrierY = this.boss.y;
 
         // Create a Graphics object to draw the rounded rectangle
-        const graphics = this.make.graphics({ x: 0, y: 0});
+        const graphics = this.make.graphics({ x: 0, y: 0 });
         graphics.fillStyle(0xffffff, 1);
         graphics.fillRoundedRect(
             0,
@@ -120,16 +121,60 @@ class BossFightGame extends Phaser.Scene {
     }
 
     private handleProjectileBossCollision() {
-        // Increment the counter
-        this.bossHitCount++;
-        // Update the displayed text
-        this.hitCountText.setText('Hits: ' + this.bossHitCount);
+        // Decrease the boss's health
+        this.bossHealth--;
+
+        // Update the health bar
+        this.updateBossHealthBar();
 
         // Reset projectile position
         this.projectile.setPosition(this.player.x, this.player.y);
         const projectileBody = this.projectile.body as Phaser.Physics.Arcade.Body;
         projectileBody.setVelocity(0, 0);
         this.projectileLaunched = false;
+
+        // Check if the boss is defeated
+        if (this.bossHealth <= 0) {
+            this.handleBossDefeat();
+        }
+    }
+
+    private handleBossDefeat() {
+        // Pause the game
+        this.physics.pause();
+
+        // Display a victory message
+        this.add.text(
+            this.scale.width / 2,
+            this.scale.height / 2,
+            'You Win!',
+            { fontSize: '64px', color: '#ffffff' }
+        ).setOrigin(0.5);
+
+        // Optionally, stop the boss movement
+        this.bossDirection = 0;
+    }
+
+    private updateBossHealthBar() {
+        // Clear previous graphics
+        this.bossHealthBar.clear();
+
+        // Health bar dimensions and position
+        const barWidth = 200;
+        const barHeight = 20;
+        const x = this.scale.width - barWidth - 10; // 10 pixels from the right edge
+        const y = 10; // 10 pixels from the top edge
+
+        // Draw the background bar (gray)
+        this.bossHealthBar.fillStyle(0x808080);
+        this.bossHealthBar.fillRect(x, y, barWidth, barHeight);
+
+        // Calculate the width of the health bar based on current health
+        const healthWidth = (this.bossHealth / this.bossMaxHealth) * barWidth;
+
+        // Draw the health bar (red)
+        this.bossHealthBar.fillStyle(0xff0000);
+        this.bossHealthBar.fillRect(x, y, healthWidth, barHeight);
     }
 
     private handleProjectileBarrierCollision() {
@@ -147,16 +192,16 @@ class BossFightGame extends Phaser.Scene {
         } else if (this.keys.down.isDown) {
             this.player.y += 3;
         }
-    
+
         if (this.keys.left.isDown) {
             this.player.x -= 3;
         } else if (this.keys.right.isDown) {
             this.player.x += 3;
         }
-    
+
         // Update player physics body
         (this.player.body as Phaser.Physics.Arcade.StaticBody).updateFromGameObject();
-    
+
         if (this.projectileLaunched) {
             // Projectile follows the boss like a homing missile
             const projectileBody = this.projectile.body as Phaser.Physics.Arcade.Body;
@@ -171,52 +216,51 @@ class BossFightGame extends Phaser.Scene {
             const projectileBody = this.projectile.body as Phaser.Physics.Arcade.Body;
             projectileBody.setVelocity(0, 0);
         }
-    
+
         // Keep player within the game bounds
         this.player.y = Phaser.Math.Clamp(
             this.player.y,
             this.player.height / 2,
             this.scale.height - this.player.height / 2
         );
-    
+
         this.player.x = Phaser.Math.Clamp(
             this.player.x,
             this.player.width / 2,
             this.scale.width - this.player.width / 2
         );
-    
+
         // Update the boss movement timer
         this.bossChangeDirectionTimer += delta;
-    
+
         if (this.bossChangeDirectionTimer >= this.bossChangeDirectionInterval) {
             this.bossChangeDirectionTimer = 0;
-    
+
             // Randomly decide to move up, down, or stop
             this.bossDirection = Phaser.Math.Between(-1, 1); // -1, 0, or 1
-    
+
             // Randomize the next interval between 1 and 3 seconds
             this.bossChangeDirectionInterval = Phaser.Math.Between(1000, 3000);
         }
-    
+
         // Move the boss
         this.boss.y += this.bossDirection * this.bossSpeed * delta / 1000;
-    
+
         // Keep the boss within the game bounds
         this.boss.y = Phaser.Math.Clamp(
             this.boss.y,
             this.boss.height / 2,
             this.scale.height - this.boss.height / 2
         );
-    
+
         // Update physics bodies after movement
         (this.player.body as Phaser.Physics.Arcade.StaticBody).updateFromGameObject();
         (this.boss.body as Phaser.Physics.Arcade.StaticBody).updateFromGameObject();
         (this.barrier.body as Phaser.Physics.Arcade.StaticBody).updateFromGameObject();
-    
+
         // Update the barrier's position to stay with the boss
         this.updateBarrierPosition();
     }
-    
 
     private updateBarrierPosition() {
         const barrierOffsetX = -150; // Distance from the boss to the barrier
