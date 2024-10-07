@@ -4,7 +4,7 @@ class PongGame extends Phaser.Scene {
     private leftPaddle!: Phaser.GameObjects.Rectangle;
     private rightPaddle!: Phaser.GameObjects.Rectangle;
     private ball!: Phaser.GameObjects.Arc;
-    private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
+    private keys!: any; // Updated to use WASD keys
     private ballInPlay: boolean = false;
     private rightPaddleHitCount: number = 0; // Counter variable
     private hitCountText!: Phaser.GameObjects.Text; // Text object to display the counter
@@ -48,11 +48,17 @@ class PongGame extends Phaser.Scene {
             this
         );
 
-        // Set up keyboard input
-        this.cursors = this.input.keyboard!.createCursorKeys();
+        // Set up keyboard input for WASD
+        this.keys = this.input.keyboard!.addKeys({
+            up: 'W',
+            down: 'S',
+            left: 'A',
+            right: 'D',
+            space: 'SPACE' // For launching the ball
+        });
 
         // Listen for the spacebar to launch the ball
-        this.input.keyboard!.on('keydown-SPACE', () => {
+        this.keys.space.on('down', () => {
             this.ballInPlay = true;
         });
 
@@ -77,17 +83,17 @@ class PongGame extends Phaser.Scene {
     }
 
     update(time: number, delta: number) {
-        // Move left paddle with arrow keys
-        if (this.cursors.up.isDown) {
-            this.leftPaddle.y -= 5;
-        } else if (this.cursors.down.isDown) {
-            this.leftPaddle.y += 5;
+        // Move left paddle with WASD keys
+        if (this.keys.up.isDown) {
+            this.leftPaddle.y -= 3;
+        } else if (this.keys.down.isDown) {
+            this.leftPaddle.y += 3;
         }
 
-        if (this.cursors.left.isDown) {
-            this.leftPaddle.x -= 5;
-        } else if (this.cursors.right.isDown) {
-            this.leftPaddle.x += 5;
+        if (this.keys.left.isDown) {
+            this.leftPaddle.x -= 3;
+        } else if (this.keys.right.isDown) {
+            this.leftPaddle.x += 3;
         }
 
         // Update left paddle physics body
