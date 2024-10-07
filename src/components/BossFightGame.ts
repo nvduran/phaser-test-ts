@@ -9,6 +9,10 @@ class BossFightGame extends Phaser.Scene {
     private bossHitCount: number = 0; // Counter variable
     private hitCountText!: Phaser.GameObjects.Text; // Text object to display the counter
     private barrier!: Phaser.GameObjects.Image; // Barrier with rounded corners
+    private bossSpeed: number = 50; // pixels per second
+    private bossDirection: number = 0; // 1 for down, -1 for up, 0 for stopped
+    private bossChangeDirectionTimer: number = 0; // time accumulator
+    private bossChangeDirectionInterval: number = 2000; // time in milliseconds
 
     constructor() {
         super({ key: 'BossFightGame' });
@@ -136,23 +140,23 @@ class BossFightGame extends Phaser.Scene {
         this.projectileLaunched = false;
     }
 
-    update() {
+    update(time: number, delta: number) {
         // Move the player with WASD keys
         if (this.keys.up.isDown) {
             this.player.y -= 3;
         } else if (this.keys.down.isDown) {
             this.player.y += 3;
         }
-
+    
         if (this.keys.left.isDown) {
             this.player.x -= 3;
         } else if (this.keys.right.isDown) {
             this.player.x += 3;
         }
-
+    
         // Update player physics body
         (this.player.body as Phaser.Physics.Arcade.StaticBody).updateFromGameObject();
-
+    
         if (this.projectileLaunched) {
             // Projectile follows the boss like a homing missile
             const projectileBody = this.projectile.body as Phaser.Physics.Arcade.Body;
@@ -167,35 +171,52 @@ class BossFightGame extends Phaser.Scene {
             const projectileBody = this.projectile.body as Phaser.Physics.Arcade.Body;
             projectileBody.setVelocity(0, 0);
         }
-
+    
         // Keep player within the game bounds
         this.player.y = Phaser.Math.Clamp(
             this.player.y,
             this.player.height / 2,
             this.scale.height - this.player.height / 2
         );
-
+    
         this.player.x = Phaser.Math.Clamp(
             this.player.x,
             this.player.width / 2,
             this.scale.width - this.player.width / 2
         );
-
-        // Update the barrier's position to stay with the boss
-        this.updateBarrierPosition();
-
+    
+        // Update the boss movement timer
+        this.bossChangeDirectionTimer += delta;
+    
+        if (this.bossChangeDirectionTimer >= this.bossChangeDirectionInterval) {
+            this.bossChangeDirectionTimer = 0;
+    
+            // Randomly decide to move up, down, or stop
+            this.bossDirection = Phaser.Math.Between(-1, 1); // -1, 0, or 1
+    
+            // Randomize the next interval between 1 and 3 seconds
+            this.bossChangeDirectionInterval = Phaser.Math.Between(1000, 3000);
+        }
+    
+        // Move the boss
+        this.boss.y += this.bossDirection * this.bossSpeed * delta / 1000;
+    
         // Keep the boss within the game bounds
         this.boss.y = Phaser.Math.Clamp(
             this.boss.y,
             this.boss.height / 2,
             this.scale.height - this.boss.height / 2
         );
-
-        // Update physics bodies after clamping
+    
+        // Update physics bodies after movement
         (this.player.body as Phaser.Physics.Arcade.StaticBody).updateFromGameObject();
         (this.boss.body as Phaser.Physics.Arcade.StaticBody).updateFromGameObject();
         (this.barrier.body as Phaser.Physics.Arcade.StaticBody).updateFromGameObject();
+    
+        // Update the barrier's position to stay with the boss
+        this.updateBarrierPosition();
     }
+    
 
     private updateBarrierPosition() {
         const barrierOffsetX = -150; // Distance from the boss to the barrier
