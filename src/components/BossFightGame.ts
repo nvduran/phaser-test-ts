@@ -8,7 +8,7 @@ class BossFightGame extends Phaser.Scene {
     private projectileLaunched: boolean = false;
     private bossHitCount: number = 0; // Counter variable
     private hitCountText!: Phaser.GameObjects.Text; // Text object to display the counter
-    private barrierComponents: Phaser.GameObjects.GameObject[] = []; // Components of the barrier
+    private barrier!: Phaser.GameObjects.Image; // Barrier with rounded corners
 
     constructor() {
         super({ key: 'BossFightGame' });
@@ -33,7 +33,7 @@ class BossFightGame extends Phaser.Scene {
         );
         this.physics.add.existing(this.boss, true);
 
-        // Create the barrier components
+        // Create the barrier with rounded corners
         this.createBarrier();
 
         // Set up the projectile at the player's position
@@ -53,16 +53,14 @@ class BossFightGame extends Phaser.Scene {
             this
         );
 
-        // Enable collision between projectile and barrier components
-        for (const component of this.barrierComponents) {
-            this.physics.add.overlap(
-                this.projectile,
-                component,
-                this.handleProjectileBarrierCollision,
-                undefined,
-                this
-            );
-        }
+        // Enable collision between projectile and barrier
+        this.physics.add.overlap(
+            this.projectile,
+            this.barrier,
+            this.handleProjectileBarrierCollision,
+            undefined,
+            this
+        );
 
         // Set up keyboard input for WASD
         this.keys = this.input.keyboard!.addKeys({
@@ -86,69 +84,35 @@ class BossFightGame extends Phaser.Scene {
     }
 
     private createBarrier() {
-        const barrierWidth = 100;
-        const barrierHeight = 100;
+        const barrierWidth = 50;
+        const barrierHeight = 150;
         const cornerRadius = 20;
 
-        // Central rectangle
-        const rect = this.add.rectangle(0, 0, barrierWidth, barrierHeight, 0xffffff);
-        this.physics.add.existing(rect, true);
-        this.barrierComponents.push(rect);
-
-        // Top-left circle
-        const circleTL = this.add.circle(0, 0, cornerRadius, 0xffffff);
-        this.physics.add.existing(circleTL, true);
-        this.barrierComponents.push(circleTL);
-
-        // Bottom-left circle
-        const circleBL = this.add.circle(0, 0, cornerRadius, 0xffffff);
-        this.physics.add.existing(circleBL, true);
-        this.barrierComponents.push(circleBL);
-
-        // Top-right circle
-        const circleTR = this.add.circle(0, 0, cornerRadius, 0xffffff);
-        this.physics.add.existing(circleTR, true);
-        this.barrierComponents.push(circleTR);
-
-        // Bottom-right circle
-        const circleBR = this.add.circle(0, 0, cornerRadius, 0xffffff);
-        this.physics.add.existing(circleBR, true);
-        this.barrierComponents.push(circleBR);
-
-        // Position components relative to the boss
-        this.updateBarrierPosition();
-    }
-
-    private updateBarrierPosition() {
+        // Position of the barrier relative to the boss
         const barrierOffsetX = -150; // Distance from the boss to the barrier
         const barrierX = this.boss.x + barrierOffsetX;
         const barrierY = this.boss.y;
 
-        const barrierWidth = 100;
-        const barrierHeight = 100;
-        const cornerRadius = 20;
+        // Create a Graphics object to draw the rounded rectangle
+        const graphics = this.make.graphics({ x: 0, y: 0});
+        graphics.fillStyle(0xffffff, 1);
+        graphics.fillRoundedRect(
+            0,
+            0,
+            barrierWidth,
+            barrierHeight,
+            cornerRadius
+        );
 
-        // Central rectangle
-        const rect = this.barrierComponents[0] as Phaser.GameObjects.Rectangle;
-        rect.setPosition(barrierX, barrierY);
+        // Generate a texture from the graphics
+        graphics.generateTexture('barrierTexture', barrierWidth, barrierHeight);
 
-        // Circles at the corners
-        const circleTL = this.barrierComponents[1] as Phaser.GameObjects.Arc;
-        circleTL.setPosition(barrierX - barrierWidth / 2 + cornerRadius, barrierY - barrierHeight / 2 + cornerRadius);
+        // Create an image using the generated texture
+        this.barrier = this.add.image(barrierX, barrierY, 'barrierTexture');
+        this.barrier.setOrigin(0.5, 0.5);
 
-        const circleBL = this.barrierComponents[2] as Phaser.GameObjects.Arc;
-        circleBL.setPosition(barrierX - barrierWidth / 2 + cornerRadius, barrierY + barrierHeight / 2 - cornerRadius);
-
-        const circleTR = this.barrierComponents[3] as Phaser.GameObjects.Arc;
-        circleTR.setPosition(barrierX + barrierWidth / 2 - cornerRadius, barrierY - barrierHeight / 2 + cornerRadius);
-
-        const circleBR = this.barrierComponents[4] as Phaser.GameObjects.Arc;
-        circleBR.setPosition(barrierX + barrierWidth / 2 - cornerRadius, barrierY + barrierHeight / 2 - cornerRadius);
-
-        // Update physics bodies
-        for (const component of this.barrierComponents) {
-            (component.body as Phaser.Physics.Arcade.StaticBody).updateFromGameObject();
-        }
+        // Add physics to the barrier
+        this.physics.add.existing(this.barrier, true);
     }
 
     private handleProjectileBossCollision() {
@@ -230,6 +194,15 @@ class BossFightGame extends Phaser.Scene {
         // Update physics bodies after clamping
         (this.player.body as Phaser.Physics.Arcade.StaticBody).updateFromGameObject();
         (this.boss.body as Phaser.Physics.Arcade.StaticBody).updateFromGameObject();
+        (this.barrier.body as Phaser.Physics.Arcade.StaticBody).updateFromGameObject();
+    }
+
+    private updateBarrierPosition() {
+        const barrierOffsetX = -150; // Distance from the boss to the barrier
+        const barrierX = this.boss.x + barrierOffsetX;
+        const barrierY = this.boss.y;
+
+        this.barrier.setPosition(barrierX, barrierY);
     }
 }
 
