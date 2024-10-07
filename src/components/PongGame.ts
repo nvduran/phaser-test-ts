@@ -6,6 +6,8 @@ class PongGame extends Phaser.Scene {
     private ball!: Phaser.GameObjects.Arc;
     private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
     private ballInPlay: boolean = false;
+    private rightPaddleHitCount: number = 0; // Counter variable
+    private hitCountText!: Phaser.GameObjects.Text; // Text object to display the counter
 
     constructor() {
         super({ key: 'PongGame' });
@@ -38,7 +40,13 @@ class PongGame extends Phaser.Scene {
         ballBody.setBounce(0);
 
         // Enable collision between ball and right paddle
-        this.physics.add.overlap(this.ball, this.rightPaddle, this.handleBallRightPaddleCollision, undefined, this);
+        this.physics.add.overlap(
+            this.ball,
+            this.rightPaddle,
+            this.handleBallRightPaddleCollision,
+            undefined,
+            this
+        );
 
         // Set up keyboard input
         this.cursors = this.input.keyboard!.createCursorKeys();
@@ -47,9 +55,20 @@ class PongGame extends Phaser.Scene {
         this.input.keyboard!.on('keydown-SPACE', () => {
             this.ballInPlay = true;
         });
+
+        // Create a text object to display the hit count
+        this.hitCountText = this.add.text(10, 10, 'Hits: 0', {
+            fontSize: '20px',
+            color: '#ffffff',
+        });
     }
 
     private handleBallRightPaddleCollision() {
+        // Increment the counter
+        this.rightPaddleHitCount++;
+        // Update the displayed text
+        this.hitCountText.setText('Hits: ' + this.rightPaddleHitCount);
+
         // Reset ball position
         this.ball.setPosition(this.leftPaddle.x, this.leftPaddle.y);
         const ballBody = this.ball.body as Phaser.Physics.Arcade.Body;
@@ -99,7 +118,6 @@ class PongGame extends Phaser.Scene {
         (this.rightPaddle.body as Phaser.Physics.Arcade.StaticBody).updateFromGameObject();
     }
 }
-
 
 export function initializeGame(containerId: string) {
     const config: Phaser.Types.Core.GameConfig = {
