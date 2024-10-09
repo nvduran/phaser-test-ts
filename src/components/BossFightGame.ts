@@ -225,39 +225,34 @@ class BossFightGame extends Phaser.Scene {
     }
 
     private spawnDangerCircle() {
-        // Random x position within game bounds
         const x = Phaser.Math.Between(50, this.scale.width - 50);
-        // Y position on the ground
-        const y = this.scale.height - 30; // Adjust 30 if necessary
+        const y = Phaser.Math.Between(50, this.scale.height - 50);
     
-        // Create the warning circle (gray)
-        const warningCircle = this.add.circle(x, y, 50, 0x808080); // Gray color
+        const warningCircle = this.add.circle(x, y, 50, 0x808080);
     
-        // Schedule the dangerous circle to appear after 1 second
         this.time.addEvent({
-            delay: 1000, // 1 second
+            delay: 1000,
             callback: () => {
-                // Remove the warning circle
                 warningCircle.destroy();
     
-                // Create the dangerous circle (red)
-                const dangerCircle = this.add.circle(x, y, 50, 0xff0000); // Red color
+                const dangerCircle = this.add.circle(x, y, 50, 0xff0000);
     
-                // Add physics body to the circle
                 this.physics.add.existing(dangerCircle);
     
-                // Set the body to be immovable and not affected by gravity
                 const body = dangerCircle.body as Phaser.Physics.Arcade.Body;
+                const radius = dangerCircle.radius;
+    
+                // Center the physics body's circle on the game object's position
+                body.setCircle(radius); // Offsets are now zero by default
+    
                 body.setImmovable(true);
                 body.setAllowGravity(false);
                 body.setVelocity(0, 0);
     
-                // Add the circle to the group
                 this.dangerCircles.add(dangerCircle);
     
-                // Destroy the circle after 5 seconds
                 this.time.addEvent({
-                    delay: 5000, // 5 seconds
+                    delay: 15000,
                     callback: () => {
                         dangerCircle.destroy();
                     },
@@ -267,6 +262,9 @@ class BossFightGame extends Phaser.Scene {
             callbackScope: this,
         });
     }
+    
+    
+    
     
 
     private handlePlayerDangerCircleCollision() {
