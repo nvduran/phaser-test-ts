@@ -21,6 +21,9 @@ class BossFightGame extends Phaser.Scene {
     // New property to track powered-up state
     private isPoweredUp: boolean = false;
 
+    // Updated property for danger circles
+    private dangerCircles!: Phaser.Physics.Arcade.Group;
+
     constructor(eventEmitter: Phaser.Events.EventEmitter) {
         super({ key: 'BossFightGame' });
         this.eventEmitter = eventEmitter;
@@ -33,7 +36,7 @@ class BossFightGame extends Phaser.Scene {
     create() {
         // Set up the player character
         this.player = this.add.rectangle(50, this.scale.height / 2, 20, 100, 0xffffff);
-        this.physics.add.existing(this.player, true);
+        this.physics.add.existing(this.player);
 
         // Set up the boss character
         this.boss = this.add.rectangle(
@@ -43,7 +46,7 @@ class BossFightGame extends Phaser.Scene {
             100,
             0xffffff
         );
-        this.physics.add.existing(this.boss, true);
+        this.physics.add.existing(this.boss);
 
         // Create the barrier with rounded corners
         this.createBarrier();
@@ -84,9 +87,6 @@ class BossFightGame extends Phaser.Scene {
             shift: 'SHIFT', // For powering up the projectile
         });
 
-        // Prevent default browser behavior for 'Space' and 'Shift' keys ***DOESNT WORK YET***
-        // this.input.keyboard!.addCapture(['SHIFT','SPACE' ]);
-
         // Listen for the spacebar to launch the projectile
         this.keys.space.on('down', () => {
             this.projectileLaunched = true;
@@ -103,6 +103,26 @@ class BossFightGame extends Phaser.Scene {
         // Initialize the boss health bar
         this.bossHealthBar = this.add.graphics();
         this.updateBossHealthBar(); // Draw the initial health bar
+
+        // Initialize the danger circles group as a dynamic group
+        this.dangerCircles = this.physics.add.group();
+
+        // Set up collision between the player and danger circles
+        this.physics.add.overlap(
+            this.player,
+            this.dangerCircles,
+            this.handlePlayerDangerCircleCollision,
+            undefined,
+            this
+        );
+
+        // Set up a timer to spawn danger circles every 10 seconds
+        this.time.addEvent({
+            delay: 10000, // 10 seconds
+            callback: this.spawnDangerCircle,
+            callbackScope: this,
+            loop: true,
+        });
     }
 
     private createBarrier() {
@@ -128,7 +148,10 @@ class BossFightGame extends Phaser.Scene {
         this.barrier.setOrigin(0.5, 0.5);
 
         // Add physics to the barrier
-        this.physics.add.existing(this.barrier, true);
+        this.physics.add.existing(this.barrier);
+        const barrierBody = this.barrier.body as Phaser.Physics.Arcade.Body;
+        barrierBody.setImmovable(true);
+        barrierBody.setAllowGravity(false);
     }
 
     private handleProjectileBossCollision() {
@@ -201,22 +224,63 @@ class BossFightGame extends Phaser.Scene {
         this.isPoweredUp = false;
     }
 
+    private spawnDangerCircle() {
+        // Random x position within game bounds
+        const x = Phaser.Math.Between(50, this.scale.width - 50);
+        // Y position on the ground
+        const y = this.scale.height - 30; // Adjust 30 if necessary
+
+        // Create the circle
+        const circle = this.add.circle(x, y, 20, 0xff0000); // Red color
+
+        // Add physics body to the circle
+        this.physics.add.existing(circle);
+
+        // Set the body to be immovable and not affected by gravity
+        const body = circle.body as Phaser.Physics.Arcade.Body;
+        body.setImmovable(true);
+        body.setAllowGravity(false);
+        body.setVelocity(0, 0);
+
+        // Add the circle to the group
+        this.dangerCircles.add(circle);
+
+        // Destroy the circle after 5 seconds (optional)
+        this.time.addEvent({
+            delay: 5000, // 5 seconds
+            callback: () => {
+                circle.destroy();
+            },
+            callbackScope: this,
+        });
+    }
+
+    private handlePlayerDangerCircleCollision() {
+        // Pause the game physics
+        this.physics.pause();
+
+        // Optionally, display a game over message here
+
+        // Emit the game end event via the event emitter
+        this.eventEmitter.emit('gameEnd');
+    }
+
     update(time: number, delta: number) {
         // Move the player with WASD keys
+        const playerBody = this.player.body as Phaser.Physics.Arcade.Body;
+        playerBody.setVelocity(0);
+
         if (this.keys.up.isDown) {
-            this.player.y -= 3;
+            playerBody.setVelocityY(-200);
         } else if (this.keys.down.isDown) {
-            this.player.y += 3;
+            playerBody.setVelocityY(200);
         }
 
         if (this.keys.left.isDown) {
-            this.player.x -= 3;
+            playerBody.setVelocityX(-200);
         } else if (this.keys.right.isDown) {
-            this.player.x += 3;
+            playerBody.setVelocityX(200);
         }
-
-        // Update player physics body
-        (this.player.body as Phaser.Physics.Arcade.StaticBody).updateFromGameObject();
 
         // Update projectile color based on powered-up state
         if (!this.projectileLaunched) {
@@ -242,13 +306,14 @@ class BossFightGame extends Phaser.Scene {
             projectileBody.setVelocity(0, 0);
         }
 
-        // Keep player within the game bounds
+        // Keep player within the vertical bounds (adjust if your ground is not at the bottom)
         this.player.y = Phaser.Math.Clamp(
             this.player.y,
             this.player.height / 2,
-            this.scale.height - this.player.height / 2
+            this.scale.height - this.player.height / 2 - 30 // Adjust 30 if necessary
         );
 
+        // Keep player within the horizontal bounds
         this.player.x = Phaser.Math.Clamp(
             this.player.x,
             this.player.width / 2,
@@ -269,7 +334,8 @@ class BossFightGame extends Phaser.Scene {
         }
 
         // Move the boss
-        this.boss.y += (this.bossDirection * this.bossSpeed * delta) / 1000;
+        const bossBody = this.boss.body as Phaser.Physics.Arcade.Body;
+        bossBody.setVelocityY(this.bossDirection * this.bossSpeed);
 
         // Keep the boss within the game bounds
         this.boss.y = Phaser.Math.Clamp(
@@ -277,11 +343,6 @@ class BossFightGame extends Phaser.Scene {
             this.boss.height / 2,
             this.scale.height - this.boss.height / 2
         );
-
-        // Update physics bodies after movement
-        (this.player.body as Phaser.Physics.Arcade.StaticBody).updateFromGameObject();
-        (this.boss.body as Phaser.Physics.Arcade.StaticBody).updateFromGameObject();
-        (this.barrier.body as Phaser.Physics.Arcade.StaticBody).updateFromGameObject();
 
         // Update the barrier's position to stay with the boss
         this.updateBarrierPosition();
@@ -309,6 +370,9 @@ export function initializeGame(
         backgroundColor: '#000',
         physics: {
             default: 'arcade',
+            arcade: {
+                gravity: { x: 0, y: 0 }, // No gravity in this game
+            },
         },
         scene: bossFightGameScene,
         parent: containerId, // Render the game into this DOM element
