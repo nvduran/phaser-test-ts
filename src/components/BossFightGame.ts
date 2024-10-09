@@ -16,9 +16,11 @@ class BossFightGame extends Phaser.Scene {
     private bossHealth: number = 20; // Current health
     private bossMaxHealth: number = 20; // Maximum health
     private bossHealthBar!: Phaser.GameObjects.Graphics; // Health bar graphics
+    private eventEmitter: Phaser.Events.EventEmitter;
 
-    constructor() {
+    constructor(eventEmitter: Phaser.Events.EventEmitter) {
         super({ key: 'BossFightGame' });
+        this.eventEmitter = eventEmitter;
     }
 
     preload() {
@@ -143,16 +145,11 @@ class BossFightGame extends Phaser.Scene {
         // Pause the game
         this.physics.pause();
 
-        // Display a victory message
-        this.add.text(
-            this.scale.width / 2,
-            this.scale.height / 2,
-            'You Win!',
-            { fontSize: '64px', color: '#ffffff' }
-        ).setOrigin(0.5);
-
         // Optionally, stop the boss movement
         this.bossDirection = 0;
+
+        // Emit the game end event via the event emitter
+        this.eventEmitter.emit('gameEnd');
     }
 
     private updateBossHealthBar() {
@@ -271,7 +268,12 @@ class BossFightGame extends Phaser.Scene {
     }
 }
 
-export function initializeGame(containerId: string) {
+export function initializeGame(
+    containerId: string,
+    eventEmitter: Phaser.Events.EventEmitter
+) {
+    const bossFightGameScene = new BossFightGame(eventEmitter);
+
     const config: Phaser.Types.Core.GameConfig = {
         type: Phaser.AUTO,
         width: 800,
@@ -280,7 +282,7 @@ export function initializeGame(containerId: string) {
         physics: {
             default: 'arcade',
         },
-        scene: BossFightGame,
+        scene: bossFightGameScene,
         parent: containerId, // Render the game into this DOM element
     };
 
