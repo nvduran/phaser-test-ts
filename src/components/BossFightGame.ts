@@ -6,7 +6,7 @@ class BossFightGame extends Phaser.Scene {
     private player!: Phaser.GameObjects.Rectangle;
     private boss!: Phaser.GameObjects.Rectangle;
     private projectile!: Phaser.GameObjects.Arc;
-    private keys!: any; // Updated to use WASD keys
+    private keys!: any; // Updated to use WASD keys and Shift
     private projectileLaunched: boolean = false;
     private barrier!: Phaser.GameObjects.Image; // Barrier with rounded corners
     private bossSpeed: number = 50; // pixels per second
@@ -17,6 +17,9 @@ class BossFightGame extends Phaser.Scene {
     private bossMaxHealth: number = 20; // Maximum health
     private bossHealthBar!: Phaser.GameObjects.Graphics; // Health bar graphics
     private eventEmitter: Phaser.Events.EventEmitter;
+
+    // New property to track powered-up state
+    private isPoweredUp: boolean = false;
 
     constructor(eventEmitter: Phaser.Events.EventEmitter) {
         super({ key: 'BossFightGame' });
@@ -71,18 +74,30 @@ class BossFightGame extends Phaser.Scene {
             this
         );
 
-        // Set up keyboard input for WASD
+        // Set up keyboard input for WASD and Shift
         this.keys = this.input.keyboard!.addKeys({
             up: 'W',
             down: 'S',
             left: 'A',
             right: 'D',
-            space: 'SPACE' // For launching the projectile
+            space: 'SPACE', // For launching the projectile
+            shift: 'SHIFT', // For powering up the projectile
         });
+
+        // Prevent default browser behavior for 'Space' and 'Shift' keys ***DOESNT WORK YET***
+        // this.input.keyboard!.addCapture(['SHIFT','SPACE' ]);
 
         // Listen for the spacebar to launch the projectile
         this.keys.space.on('down', () => {
             this.projectileLaunched = true;
+        });
+
+        // Listen for the Shift key to power up the projectile
+        this.keys.shift.on('down', () => {
+            if (!this.projectileLaunched) {
+                // Only allow powering up before the projectile is launched
+                this.isPoweredUp = true;
+            }
         });
 
         // Initialize the boss health bar
@@ -103,13 +118,7 @@ class BossFightGame extends Phaser.Scene {
         // Create a Graphics object to draw the rounded rectangle
         const graphics = this.make.graphics({ x: 0, y: 0 });
         graphics.fillStyle(0xffffff, 1);
-        graphics.fillRoundedRect(
-            0,
-            0,
-            barrierWidth,
-            barrierHeight,
-            cornerRadius
-        );
+        graphics.fillRoundedRect(0, 0, barrierWidth, barrierHeight, cornerRadius);
 
         // Generate a texture from the graphics
         graphics.generateTexture('barrierTexture', barrierWidth, barrierHeight);
@@ -124,7 +133,11 @@ class BossFightGame extends Phaser.Scene {
 
     private handleProjectileBossCollision() {
         // Decrease the boss's health
-        this.bossHealth--;
+        if (this.isPoweredUp) {
+            this.bossHealth -= 2;
+        } else {
+            this.bossHealth--;
+        }
 
         // Update the health bar
         this.updateBossHealthBar();
@@ -135,6 +148,9 @@ class BossFightGame extends Phaser.Scene {
         projectileBody.setVelocity(0, 0);
         this.projectileLaunched = false;
 
+        // Reset powered-up state
+        this.isPoweredUp = false;
+
         // Check if the boss is defeated
         if (this.bossHealth <= 0) {
             this.handleBossDefeat();
@@ -144,6 +160,14 @@ class BossFightGame extends Phaser.Scene {
     private handleBossDefeat() {
         // Pause the game
         this.physics.pause();
+
+        // Display a victory message
+        this.add
+            .text(this.scale.width / 2, this.scale.height / 2, 'You Win!', {
+                fontSize: '64px',
+                color: '#ffffff',
+            })
+            .setOrigin(0.5);
 
         // Optionally, stop the boss movement
         this.bossDirection = 0;
@@ -180,6 +204,9 @@ class BossFightGame extends Phaser.Scene {
         const projectileBody = this.projectile.body as Phaser.Physics.Arcade.Body;
         projectileBody.setVelocity(0, 0);
         this.projectileLaunched = false;
+
+        // Reset powered-up state
+        this.isPoweredUp = false;
     }
 
     update(time: number, delta: number) {
@@ -198,6 +225,15 @@ class BossFightGame extends Phaser.Scene {
 
         // Update player physics body
         (this.player.body as Phaser.Physics.Arcade.StaticBody).updateFromGameObject();
+
+        // Update projectile color based on powered-up state
+        if (!this.projectileLaunched) {
+            if (this.isPoweredUp) {
+                this.projectile.setFillStyle(0xff0000); // Red color
+            } else {
+                this.projectile.setFillStyle(0xffffff); // White color
+            }
+        }
 
         if (this.projectileLaunched) {
             // Projectile follows the boss like a homing missile
@@ -241,7 +277,7 @@ class BossFightGame extends Phaser.Scene {
         }
 
         // Move the boss
-        this.boss.y += this.bossDirection * this.bossSpeed * delta / 1000;
+        this.boss.y += (this.bossDirection * this.bossSpeed * delta) / 1000;
 
         // Keep the boss within the game bounds
         this.boss.y = Phaser.Math.Clamp(
