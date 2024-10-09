@@ -161,14 +161,6 @@ class BossFightGame extends Phaser.Scene {
         // Pause the game
         this.physics.pause();
 
-        // Display a victory message
-        this.add
-            .text(this.scale.width / 2, this.scale.height / 2, 'You Win!', {
-                fontSize: '64px',
-                color: '#ffffff',
-            })
-            .setOrigin(0.5);
-
         // Optionally, stop the boss movement
         this.bossDirection = 0;
 
