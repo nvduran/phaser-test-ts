@@ -34,6 +34,17 @@ class BossFightGame extends Phaser.Scene {
     }
 
     create() {
+        // Remove all existing time events
+        this.time.removeAllEvents();
+
+        // Reset properties
+        this.projectileLaunched = false;
+        this.isPoweredUp = false;
+        this.bossDirection = 0;
+        this.bossChangeDirectionTimer = 0;
+        this.bossChangeDirectionInterval = 2000;
+        this.bossHealth = this.bossMaxHealth;
+
         // Set up the player character
         this.player = this.add.rectangle(50, this.scale.height / 2, 20, 100, 0xffffff);
         this.physics.add.existing(this.player);
@@ -180,34 +191,6 @@ class BossFightGame extends Phaser.Scene {
         }
     }
 
-    private handleBossDefeat() {
-        // Pause the game
-        this.physics.pause();
-
-        // Optionally, stop the boss movement
-        this.bossDirection = 0;
-
-        // Display a victory message
-        const victoryText = this.add.text(
-            this.scale.width / 2,
-            this.scale.height / 2,
-            'You Win!',
-            {
-                fontSize: '64px',
-                color: '#00ff00',
-            }
-        );
-        victoryText.setOrigin(0.5, 0.5);
-
-        // Optionally, allow the player to restart the game
-        this.input.keyboard!.once('keydown_SPACE', () => {
-            this.scene.restart();
-        });
-
-        // Emit the game win event via the event emitter
-        this.eventEmitter.emit('gameWin');
-    }
-
     private updateBossHealthBar() {
         // Clear previous graphics
         this.bossHealthBar.clear();
@@ -280,14 +263,75 @@ class BossFightGame extends Phaser.Scene {
         });
     }
 
+    private handleBossDefeat() {
+        // Pause the game
+        this.physics.pause();
+
+        // Stop the boss movement
+        this.bossDirection = 0;
+
+        // Remove all time events
+        this.time.removeAllEvents();
+
+        // Display a victory message
+        const victoryText = this.add.text(
+            this.scale.width / 2,
+            this.scale.height / 2 - 50,
+            'You Win!',
+            {
+                fontSize: '64px',
+                color: '#00ff00',
+            }
+        );
+        victoryText.setOrigin(0.5, 0.5);
+
+        // Create a 'Restart' button
+        const restartButton = this.add.text(
+            this.scale.width / 2,
+            this.scale.height / 2 + 50,
+            'Restart',
+            {
+                fontSize: '32px',
+                color: '#ffffff',
+                backgroundColor: '#0000ff',
+                padding: { x: 10, y: 5 },
+            }
+        );
+        restartButton.setOrigin(0.5, 0.5);
+        restartButton.setInteractive();
+
+        // Change color on hover
+        restartButton.on('pointerover', () => {
+            restartButton.setStyle({ fill: '#ff0' });
+        });
+        restartButton.on('pointerout', () => {
+            restartButton.setStyle({ fill: '#fff' });
+        });
+
+        // Restart game on click
+        restartButton.on('pointerdown', () => {
+            // Destroy texts and resume physics before restarting
+            victoryText.destroy();
+            restartButton.destroy();
+            this.physics.resume();
+            this.scene.restart();
+        });
+
+        // Emit game win event
+        this.eventEmitter.emit('gameWin');
+    }
+
     private handlePlayerDangerCircleCollision() {
         // Pause the game physics
         this.physics.pause();
 
+        // Remove all time events
+        this.time.removeAllEvents();
+
         // Display a game over message
         const gameOverText = this.add.text(
             this.scale.width / 2,
-            this.scale.height / 2,
+            this.scale.height / 2 - 50,
             'Game Over',
             {
                 fontSize: '64px',
@@ -296,12 +340,39 @@ class BossFightGame extends Phaser.Scene {
         );
         gameOverText.setOrigin(0.5, 0.5);
 
-        // Optionally, allow the player to restart the game
-        this.input.keyboard!.once('keydown_SPACE', () => {
+        // Create a 'Restart' button
+        const restartButton = this.add.text(
+            this.scale.width / 2,
+            this.scale.height / 2 + 50,
+            'Restart',
+            {
+                fontSize: '32px',
+                color: '#ffffff',
+                backgroundColor: '#0000ff',
+                padding: { x: 10, y: 5 },
+            }
+        );
+        restartButton.setOrigin(0.5, 0.5);
+        restartButton.setInteractive();
+
+        // Change color on hover
+        restartButton.on('pointerover', () => {
+            restartButton.setStyle({ fill: '#ff0' });
+        });
+        restartButton.on('pointerout', () => {
+            restartButton.setStyle({ fill: '#fff' });
+        });
+
+        // Restart game on click
+        restartButton.on('pointerdown', () => {
+            // Destroy texts and resume physics before restarting
+            gameOverText.destroy();
+            restartButton.destroy();
+            this.physics.resume();
             this.scene.restart();
         });
 
-        // Emit the game lose event via the event emitter
+        // Emit game lose event
         this.eventEmitter.emit('gameLose');
     }
 
@@ -346,7 +417,7 @@ class BossFightGame extends Phaser.Scene {
             projectileBody.setVelocity(0, 0);
         }
 
-        // Keep player within the vertical bounds (adjust if your ground is not at the bottom)
+        // Keep player within the vertical bounds
         this.player.y = Phaser.Math.Clamp(
             this.player.y,
             this.player.height / 2,
@@ -392,14 +463,14 @@ class BossFightGame extends Phaser.Scene {
         const barrierOffsetX = -150; // Distance from the boss to the barrier
         const barrierX = this.boss.x + barrierOffsetX;
         const barrierY = this.boss.y;
-    
+
         this.barrier.setPosition(barrierX, barrierY);
-    
+
         // Update the barrier's physics body position to match the GameObject
         const barrierBody = this.barrier.body as Phaser.Physics.Arcade.Body;
         barrierBody.updateFromGameObject();
     }
-}    
+}
 
 export function initializeGame(
     containerId: string,
