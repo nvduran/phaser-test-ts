@@ -187,8 +187,25 @@ class BossFightGame extends Phaser.Scene {
         // Optionally, stop the boss movement
         this.bossDirection = 0;
 
-        // Emit the game end event via the event emitter
-        this.eventEmitter.emit('gameEnd');
+        // Display a victory message
+        const victoryText = this.add.text(
+            this.scale.width / 2,
+            this.scale.height / 2,
+            'You Win!',
+            {
+                fontSize: '64px',
+                color: '#00ff00',
+            }
+        );
+        victoryText.setOrigin(0.5, 0.5);
+
+        // Optionally, allow the player to restart the game
+        this.input.keyboard!.once('keydown_SPACE', () => {
+            this.scene.restart();
+        });
+
+        // Emit the game win event via the event emitter
+        this.eventEmitter.emit('gameWin');
     }
 
     private updateBossHealthBar() {
@@ -227,30 +244,30 @@ class BossFightGame extends Phaser.Scene {
     private spawnDangerCircle() {
         const x = Phaser.Math.Between(50, this.scale.width - 50);
         const y = Phaser.Math.Between(50, this.scale.height - 50);
-    
+
         const warningCircle = this.add.circle(x, y, 50, 0x808080);
-    
+
         this.time.addEvent({
             delay: 1000,
             callback: () => {
                 warningCircle.destroy();
-    
+
                 const dangerCircle = this.add.circle(x, y, 50, 0xff0000);
-    
+
                 this.physics.add.existing(dangerCircle);
-    
+
                 const body = dangerCircle.body as Phaser.Physics.Arcade.Body;
                 const radius = dangerCircle.radius;
-    
+
                 // Center the physics body's circle on the game object's position
-                body.setCircle(radius); // Offsets are now zero by default
-    
+                body.setCircle(radius, -radius, -radius);
+
                 body.setImmovable(true);
                 body.setAllowGravity(false);
                 body.setVelocity(0, 0);
-    
+
                 this.dangerCircles.add(dangerCircle);
-    
+
                 this.time.addEvent({
                     delay: 15000,
                     callback: () => {
@@ -262,19 +279,30 @@ class BossFightGame extends Phaser.Scene {
             callbackScope: this,
         });
     }
-    
-    
-    
-    
 
     private handlePlayerDangerCircleCollision() {
         // Pause the game physics
         this.physics.pause();
 
-        // Optionally, display a game over message here
+        // Display a game over message
+        const gameOverText = this.add.text(
+            this.scale.width / 2,
+            this.scale.height / 2,
+            'Game Over',
+            {
+                fontSize: '64px',
+                color: '#ff0000',
+            }
+        );
+        gameOverText.setOrigin(0.5, 0.5);
 
-        // Emit the game end event via the event emitter
-        this.eventEmitter.emit('gameEnd');
+        // Optionally, allow the player to restart the game
+        this.input.keyboard!.once('keydown_SPACE', () => {
+            this.scene.restart();
+        });
+
+        // Emit the game lose event via the event emitter
+        this.eventEmitter.emit('gameLose');
     }
 
     update(time: number, delta: number) {
@@ -364,10 +392,14 @@ class BossFightGame extends Phaser.Scene {
         const barrierOffsetX = -150; // Distance from the boss to the barrier
         const barrierX = this.boss.x + barrierOffsetX;
         const barrierY = this.boss.y;
-
+    
         this.barrier.setPosition(barrierX, barrierY);
+    
+        // Update the barrier's physics body position to match the GameObject
+        const barrierBody = this.barrier.body as Phaser.Physics.Arcade.Body;
+        barrierBody.updateFromGameObject();
     }
-}
+}    
 
 export function initializeGame(
     containerId: string,
