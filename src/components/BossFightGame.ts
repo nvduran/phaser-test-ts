@@ -243,7 +243,7 @@ class BossFightGame extends Phaser.Scene {
                 const radius = dangerCircle.radius;
 
                 // Center the physics body's circle on the game object's position
-                body.setCircle(radius, -radius, -radius);
+                body.setCircle(radius);
 
                 body.setImmovable(true);
                 body.setAllowGravity(false);
