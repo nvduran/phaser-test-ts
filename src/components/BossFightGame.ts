@@ -22,6 +22,7 @@ class BossFightGame extends Phaser.Scene {
     private projectiles!: Phaser.Physics.Arcade.Group; // Group to manage multiple projectiles
     private isBossDefeated: boolean = false; // Flag to track if the boss is defeated
     private dangerCircleSize: number = 50; // Default danger circle size
+    private playerProjectile1Cooldown: number = 1000; // Default cooldown for player projectile 1
 
     constructor(eventEmitter: Phaser.Events.EventEmitter) {
         super({ key: 'BossFightGame' });
@@ -30,6 +31,11 @@ class BossFightGame extends Phaser.Scene {
         // Listen for updates to the danger circle size
         this.eventEmitter.on('updateDangerCircleSize', (size: number) => {
             this.dangerCircleSize = size;
+        });
+
+        // Listen for updates to the player projectile 1 cooldown
+        this.eventEmitter.on('updatePlayerProjectile1Cooldown', (cooldown: number) => {
+            this.playerProjectile1Cooldown = cooldown;
         });
     }
 
@@ -102,7 +108,7 @@ class BossFightGame extends Phaser.Scene {
         this.keys.space.on('down', () => {
             if (this.projectileCooldown <= 0) {
                 this.fireProjectile();
-                this.projectileCooldown = 1000; // 1-second cooldown
+                this.projectileCooldown = this.playerProjectile1Cooldown; // 1-second cooldown
             }
         });
 

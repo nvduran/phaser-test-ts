@@ -7,6 +7,7 @@ const BossGameComponent: React.FC = () => {
     const phaserGameRef = useRef<Phaser.Game | null>(null);
     const [gameEnded, setGameEnded] = useState(false);
     const [dangerCircleSize, setDangerCircleSize] = useState<number>(50); // Default size
+    const [playerProjectile1Cooldown, setPlayerProjectile1Cooldown] = useState(1000);
 
     // Create an event emitter
     const eventEmitter = useRef(new Phaser.Events.EventEmitter()).current;
@@ -36,6 +37,11 @@ const BossGameComponent: React.FC = () => {
     useEffect(() => {
         eventEmitter.emit('updateDangerCircleSize', dangerCircleSize);
     }, [dangerCircleSize]);
+
+    // emit the new player projectile cooldown to the game whenever it changes
+    useEffect(() => {
+        eventEmitter.emit('updatePlayerProjectile1Cooldown', playerProjectile1Cooldown);
+    }, [playerProjectile1Cooldown]);
 
     const restartGame = () => {
         // Reset the gameEnded state
@@ -68,6 +74,17 @@ const BossGameComponent: React.FC = () => {
                         type="number"
                         value={dangerCircleSize}
                         onChange={(e) => setDangerCircleSize(Number(e.target.value))}
+                        style={{ marginLeft: '10px' }}
+                    />
+                </label>
+            </div>
+            <div style={{ marginBottom: '10px' }}>
+                <label>
+                    Player Projectile 1 Cooldown:
+                    <input
+                        type="number"
+                        value={playerProjectile1Cooldown}
+                        onChange={(e) => setPlayerProjectile1Cooldown(Number(e.target.value))}
                         style={{ marginLeft: '10px' }}
                     />
                 </label>
