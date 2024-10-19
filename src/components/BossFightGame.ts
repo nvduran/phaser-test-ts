@@ -21,10 +21,16 @@ class BossFightGame extends Phaser.Scene {
     private projectileCooldownBar!: Phaser.GameObjects.Graphics; // Cooldown bar graphics
     private projectiles!: Phaser.Physics.Arcade.Group; // Group to manage multiple projectiles
     private isBossDefeated: boolean = false; // Flag to track if the boss is defeated
+    private dangerCircleSize: number = 50; // Default danger circle size
 
     constructor(eventEmitter: Phaser.Events.EventEmitter) {
         super({ key: 'BossFightGame' });
         this.eventEmitter = eventEmitter;
+
+        // Listen for updates to the danger circle size
+        this.eventEmitter.on('updateDangerCircleSize', (size: number) => {
+            this.dangerCircleSize = size;
+        });
     }
 
     preload() {
@@ -234,24 +240,23 @@ class BossFightGame extends Phaser.Scene {
     private spawnDangerCircle() {
         const x = Phaser.Math.Between(50, this.scale.width - 50);
         const y = Phaser.Math.Between(50, this.scale.height - 50);
+        const radius = this.dangerCircleSize;
 
-        const warningCircle = this.add.circle(x, y, 50, 0x808080);
+        const warningCircle = this.add.circle(x, y, radius, 0x808080);
 
         this.time.addEvent({
             delay: 1000,
             callback: () => {
                 warningCircle.destroy();
 
-                const dangerCircle = this.add.circle(x, y, 50, 0xff0000);
+                const dangerCircle = this.add.circle(x, y, radius, 0xff0000);
 
                 this.physics.add.existing(dangerCircle);
 
                 const body = dangerCircle.body as Phaser.Physics.Arcade.Body;
-                const radius = dangerCircle.radius;
 
-                // Center the physics body's circle on the game object's position
+                // Set the physics body's circle with the correct radius
                 body.setCircle(radius);
-
                 body.setImmovable(true);
                 body.setAllowGravity(false);
                 body.setVelocity(0, 0);
