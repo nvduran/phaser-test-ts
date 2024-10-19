@@ -11,8 +11,8 @@ class BossFightGame extends Phaser.Scene {
     private bossDirection: number = 0; // 1 for down, -1 for up, 0 for stopped
     private bossChangeDirectionTimer: number = 0; // time accumulator
     private bossChangeDirectionInterval: number = 2000; // time in milliseconds
-    private bossHealth: number = 20; // Current health
-    private bossMaxHealth: number = 20; // Maximum health
+    private bossHealth: number = 100; // Current health
+    private bossMaxHealth: number = 100; // Maximum health
     private bossHealthBar!: Phaser.GameObjects.Graphics; // Health bar graphics
     private eventEmitter: Phaser.Events.EventEmitter;
     private isPoweredUp: boolean = false; // Track powered-up state
@@ -23,6 +23,9 @@ class BossFightGame extends Phaser.Scene {
     private isBossDefeated: boolean = false; // Flag to track if the boss is defeated
     private dangerCircleSize: number = 50; // Default danger circle size
     private playerProjectile1Cooldown: number = 1000; // Default cooldown for player projectile 1
+    private dangerCircleSpawnInterval: number = 5000; // Default spawn interval for danger circles
+    private dangerCircleDespawnInterval: number = 5000; // Default despawn interval for danger circlesds
+    private dangerCircleWarningTime: number = 1000; // Default warning time for danger circles
 
     constructor(eventEmitter: Phaser.Events.EventEmitter) {
         super({ key: 'BossFightGame' });
@@ -36,6 +39,27 @@ class BossFightGame extends Phaser.Scene {
         // Listen for updates to the player projectile 1 cooldown
         this.eventEmitter.on('updatePlayerProjectile1Cooldown', (cooldown: number) => {
             this.playerProjectile1Cooldown = cooldown;
+        });
+
+        // Listen for updates to the danger circle spawn interval
+        this.eventEmitter.on('updateDangerCircleSpawnInterval', (interval: number) => {
+            this.dangerCircleSpawnInterval = interval;
+        });
+
+        // Listen for updates to the danger circle despawn interval
+        this.eventEmitter.on('updateDangerCircleDespawnInterval', (interval: number) => {
+            this.dangerCircleDespawnInterval = interval;
+        });
+
+        // Listen for updates to the danger circle warning time
+        this.eventEmitter.on('updateDangerCircleWarningTime', (time: number) => {
+            this.dangerCircleWarningTime = time;
+        });
+
+        // Listen for updates to the boss max health
+        this.eventEmitter.on('updateBossMaxHealth', (health: number) => {
+            this.bossMaxHealth = health;
+
         });
     }
 
@@ -135,7 +159,7 @@ class BossFightGame extends Phaser.Scene {
 
         // Set up a timer to spawn danger circles every 10 seconds
         this.time.addEvent({
-            delay: 10000, // 10 seconds
+            delay: this.dangerCircleSpawnInterval, // 10 seconds
             callback: this.spawnDangerCircle,
             callbackScope: this,
             loop: true,
@@ -251,7 +275,7 @@ class BossFightGame extends Phaser.Scene {
         const warningCircle = this.add.circle(x, y, radius, 0x808080);
 
         this.time.addEvent({
-            delay: 1000,
+            delay: this.dangerCircleWarningTime,
             callback: () => {
                 warningCircle.destroy();
 
@@ -270,7 +294,7 @@ class BossFightGame extends Phaser.Scene {
                 this.dangerCircles.add(dangerCircle);
 
                 this.time.addEvent({
-                    delay: 15000,
+                    delay: this.dangerCircleDespawnInterval,
                     callback: () => {
                         dangerCircle.destroy();
                     },
