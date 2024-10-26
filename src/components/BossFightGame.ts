@@ -1,5 +1,3 @@
-// BossFightGame.ts
-
 import Phaser from 'phaser';
 
 class BossFightGame extends Phaser.Scene {
@@ -24,7 +22,7 @@ class BossFightGame extends Phaser.Scene {
     private dangerCircleSize: number = 50; // Default danger circle size
     private playerProjectile1Cooldown: number = 1000; // Default cooldown for player projectile 1
     private dangerCircleSpawnInterval: number = 5000; // Default spawn interval for danger circles
-    private dangerCircleDespawnInterval: number = 5000; // Default despawn interval for danger circlesds
+    private dangerCircleDespawnInterval: number = 5000; // Default despawn interval for danger circles
     private dangerCircleWarningTime: number = 1000; // Default warning time for danger circles
 
     constructor(eventEmitter: Phaser.Events.EventEmitter) {
@@ -59,7 +57,7 @@ class BossFightGame extends Phaser.Scene {
         // Listen for updates to the boss max health
         this.eventEmitter.on('updateBossMaxHealth', (health: number) => {
             this.bossMaxHealth = health;
-
+            this.bossHealth = health; // Reset current health to max health
         });
     }
 
@@ -132,7 +130,7 @@ class BossFightGame extends Phaser.Scene {
         this.keys.space.on('down', () => {
             if (this.projectileCooldown <= 0) {
                 this.fireProjectile();
-                this.projectileCooldown = this.playerProjectile1Cooldown; // 1-second cooldown
+                this.projectileCooldown = this.playerProjectile1Cooldown; // Cooldown based on settings
             }
         });
 
@@ -157,9 +155,9 @@ class BossFightGame extends Phaser.Scene {
             this
         );
 
-        // Set up a timer to spawn danger circles every 10 seconds
+        // Set up a timer to spawn danger circles
         this.time.addEvent({
-            delay: this.dangerCircleSpawnInterval, // 10 seconds
+            delay: this.dangerCircleSpawnInterval,
             callback: this.spawnDangerCircle,
             callbackScope: this,
             loop: true,
@@ -204,7 +202,7 @@ class BossFightGame extends Phaser.Scene {
     ) {
         let projectile: Phaser.GameObjects.Arc;
         let boss: Phaser.GameObjects.Rectangle;
-    
+
         if (object1.getData('type') === 'projectile') {
             projectile = object1 as Phaser.GameObjects.Arc;
             boss = object2 as Phaser.GameObjects.Rectangle;
@@ -212,19 +210,19 @@ class BossFightGame extends Phaser.Scene {
             projectile = object2 as Phaser.GameObjects.Arc;
             boss = object1 as Phaser.GameObjects.Rectangle;
         }
-    
+
         const isPoweredUp = projectile.getData('isPoweredUp') || false;
-    
+
         if (isPoweredUp) {
             this.bossHealth -= 2;
         } else {
             this.bossHealth--;
         }
-    
+
         this.updateBossHealthBar();
-    
+
         projectile.destroy();
-    
+
         if (this.bossHealth <= 0) {
             this.handleBossDefeat();
         }
@@ -257,13 +255,13 @@ class BossFightGame extends Phaser.Scene {
         object2: Phaser.Types.Physics.Arcade.GameObjectWithBody
     ) {
         let projectile: Phaser.GameObjects.Arc;
-    
+
         if (object1.getData('type') === 'projectile') {
             projectile = object1 as Phaser.GameObjects.Arc;
         } else {
             projectile = object2 as Phaser.GameObjects.Arc;
         }
-    
+
         projectile.destroy();
     }
 
@@ -318,52 +316,8 @@ class BossFightGame extends Phaser.Scene {
         // Set the boss defeated flag
         this.isBossDefeated = true;
 
-        // Display a victory message
-        const victoryText = this.add.text(
-            this.scale.width / 2,
-            this.scale.height / 2 - 50,
-            'You Win!',
-            {
-                fontSize: '64px',
-                color: '#00ff00',
-            }
-        );
-        victoryText.setOrigin(0.5, 0.5);
-
-        // Create a 'Restart' button
-        const restartButton = this.add.text(
-            this.scale.width / 2,
-            this.scale.height / 2 + 50,
-            'Restart',
-            {
-                fontSize: '32px',
-                color: '#ffffff',
-                backgroundColor: '#0000ff',
-                padding: { x: 10, y: 5 },
-            }
-        );
-        restartButton.setOrigin(0.5, 0.5);
-        restartButton.setInteractive();
-
-        // Change color on hover
-        restartButton.on('pointerover', () => {
-            restartButton.setStyle({ fill: '#ff0' });
-        });
-        restartButton.on('pointerout', () => {
-            restartButton.setStyle({ fill: '#fff' });
-        });
-
-        // Restart game on click
-        restartButton.on('pointerdown', () => {
-            // Destroy texts and resume physics before restarting
-            victoryText.destroy();
-            restartButton.destroy();
-            this.physics.resume();
-            this.scene.restart();
-        });
-
-        // Emit game win event
-        this.eventEmitter.emit('gameWin');
+        // Emit game end event with result 'win'
+        this.eventEmitter.emit('gameEnd', { result: 'win' });
     }
 
     private handlePlayerDangerCircleCollision(
@@ -376,52 +330,8 @@ class BossFightGame extends Phaser.Scene {
         // Remove all time events
         this.time.removeAllEvents();
 
-        // Display a game over message
-        const gameOverText = this.add.text(
-            this.scale.width / 2,
-            this.scale.height / 2 - 50,
-            'Game Over',
-            {
-                fontSize: '64px',
-                color: '#ff0000',
-            }
-        );
-        gameOverText.setOrigin(0.5, 0.5);
-
-        // Create a 'Restart' button
-        const restartButton = this.add.text(
-            this.scale.width / 2,
-            this.scale.height / 2 + 50,
-            'Restart',
-            {
-                fontSize: '32px',
-                color: '#ffffff',
-                backgroundColor: '#0000ff',
-                padding: { x: 10, y: 5 },
-            }
-        );
-        restartButton.setOrigin(0.5, 0.5);
-        restartButton.setInteractive();
-
-        // Change color on hover
-        restartButton.on('pointerover', () => {
-            restartButton.setStyle({ fill: '#ff0' });
-        });
-        restartButton.on('pointerout', () => {
-            restartButton.setStyle({ fill: '#fff' });
-        });
-
-        // Restart game on click
-        restartButton.on('pointerdown', () => {
-            // Destroy texts and resume physics before restarting
-            gameOverText.destroy();
-            restartButton.destroy();
-            this.physics.resume();
-            this.scene.restart();
-        });
-
-        // Emit game lose event
-        this.eventEmitter.emit('gameLose');
+        // Emit game end event with result 'lose'
+        this.eventEmitter.emit('gameEnd', { result: 'lose' });
     }
 
     private fireProjectile() {
@@ -459,23 +369,23 @@ class BossFightGame extends Phaser.Scene {
         if (this.physics.world.isPaused) {
             return;
         }
-    
+
         // Move the player with WASD keys
         const playerBody = this.player.body as Phaser.Physics.Arcade.Body;
         playerBody.setVelocity(0);
-    
+
         if (this.keys.up.isDown) {
             playerBody.setVelocityY(-200);
         } else if (this.keys.down.isDown) {
             playerBody.setVelocityY(200);
         }
-    
+
         if (this.keys.left.isDown) {
             playerBody.setVelocityX(-200);
         } else if (this.keys.right.isDown) {
             playerBody.setVelocityX(200);
         }
-    
+
         // Update the cooldown timer
         if (this.projectileCooldown > 0) {
             this.projectileCooldown -= delta;
@@ -483,96 +393,92 @@ class BossFightGame extends Phaser.Scene {
                 this.projectileCooldown = 0;
             }
         }
-    
+
         // Update the cooldown bar
         this.updateCooldownBar();
-    
+
         // Keep player within the vertical bounds
         this.player.y = Phaser.Math.Clamp(
             this.player.y,
             this.player.height / 2,
             this.scale.height - this.player.height / 2 - 30 // Adjust 30 if necessary
         );
-    
+
         // Keep player within the horizontal bounds
         this.player.x = Phaser.Math.Clamp(
             this.player.x,
             this.player.width / 2,
             this.scale.width - this.player.width / 2
         );
-    
+
         // Only update boss movement if the boss is not defeated and boss body exists
         if (!this.isBossDefeated && this.boss.body) {
             // Update the boss movement timer
             this.bossChangeDirectionTimer += delta;
-    
+
             if (this.bossChangeDirectionTimer >= this.bossChangeDirectionInterval) {
                 this.bossChangeDirectionTimer = 0;
-    
+
                 // Randomly decide to move up, down, or stop
                 this.bossDirection = Phaser.Math.Between(-1, 1); // -1, 0, or 1
-    
+
                 // Randomize the next interval between 1 and 3 seconds
                 this.bossChangeDirectionInterval = Phaser.Math.Between(1000, 3000);
             }
-    
+
             // Move the boss
             const bossBody = this.boss.body as Phaser.Physics.Arcade.Body;
             bossBody.setVelocityY(this.bossDirection * this.bossSpeed);
-    
+
             // Keep the boss within the game bounds
             this.boss.y = Phaser.Math.Clamp(
                 this.boss.y,
                 this.boss.height / 2,
                 this.scale.height - this.boss.height / 2
             );
-    
+
             // Update the barrier's position to stay with the boss
             this.updateBarrierPosition();
-    
+
             // Update projectiles to home in on the boss
             this.projectiles.children.iterate((proj) => {
                 const projectile = proj as Phaser.GameObjects.Arc;
-    
+
                 // Check if projectile is active and has a body
                 if (!projectile.active || !projectile.body) {
                     return null; // Return null to satisfy the expected return type
                 }
-    
+
                 const projectileBody = projectile.body as Phaser.Physics.Arcade.Body;
-    
+
                 // Homing behavior
                 const dx = this.boss.x - projectile.x;
                 const dy = this.boss.y - projectile.y;
                 const angle = Math.atan2(dy, dx);
                 const speed = 600;
-    
+
                 projectileBody.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
-    
+
                 return null; // Return null to satisfy the expected return type
             });
         }
     }
-    
-    
-    
 
     private updateBarrierPosition() {
         if (this.isBossDefeated || !this.barrier || !this.barrier.body) {
             return; // Early exit if barrier or its body is undefined
         }
-    
+
         const barrierOffsetX = -150; // Distance from the boss to the barrier
         const barrierX = this.boss.x + barrierOffsetX;
         const barrierY = this.boss.y;
-    
+
         this.barrier.setPosition(barrierX, barrierY);
-    
+
         // Update the barrier's physics body position to match the GameObject
         const barrierBody = this.barrier.body as Phaser.Physics.Arcade.Body;
         barrierBody.updateFromGameObject();
     }
-    
 
     private updateCooldownBar() {
         // Clear previous graphics
@@ -589,7 +495,7 @@ class BossFightGame extends Phaser.Scene {
         this.projectileCooldownBar.fillRect(x, y, barWidth, barHeight);
 
         // Calculate the width of the cooldown bar based on remaining cooldown
-        const cooldownRatio = this.projectileCooldown / 1000; // 1000 ms cooldown
+        const cooldownRatio = this.projectileCooldown / this.playerProjectile1Cooldown;
         const cooldownWidth = barWidth * cooldownRatio;
 
         // Draw the cooldown bar (red) only if cooldown is active
