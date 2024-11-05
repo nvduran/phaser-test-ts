@@ -4,7 +4,7 @@ class BossFightGame extends Phaser.Scene {
     private player!: Phaser.GameObjects.Rectangle;
     private boss!: Phaser.GameObjects.Rectangle;
     private keys!: any; // Updated to use WASD keys and Shift
-    private barrier!: Phaser.GameObjects.Image; // Barrier with rounded corners
+    private barrier: Phaser.GameObjects.Image | null = null; // Barrier with rounded corners
     private bossSpeed: number = 50; // pixels per second
     private bossDirection: number = 0; // 1 for down, -1 for up, 0 for stopped
     private bossChangeDirectionTimer: number = 0; // time accumulator
@@ -24,6 +24,7 @@ class BossFightGame extends Phaser.Scene {
     private dangerCircleSpawnInterval: number = 5000; // Default spawn interval for danger circles
     private dangerCircleDespawnInterval: number = 5000; // Default despawn interval for danger circles
     private dangerCircleWarningTime: number = 1000; // Default warning time for danger circles
+    private bossShieldEnabled: boolean = true; // New property to track shield state
 
     constructor(eventEmitter: Phaser.Events.EventEmitter) {
         super({ key: 'BossFightGame' });
@@ -59,6 +60,11 @@ class BossFightGame extends Phaser.Scene {
             this.bossMaxHealth = health;
             this.bossHealth = health; // Reset current health to max health
         });
+
+        // Listen for updates to the boss shield enabled state
+        this.eventEmitter.on('updateBossShieldEnabled', (enabled: boolean) => {
+            this.bossShieldEnabled = enabled;
+        });
     }
 
     preload() {
@@ -92,8 +98,10 @@ class BossFightGame extends Phaser.Scene {
         );
         this.physics.add.existing(this.boss);
 
-        // Create the barrier with rounded corners
-        this.createBarrier();
+        // Create the barrier with rounded corners if enabled
+        if (this.bossShieldEnabled) {
+            this.createBarrier();
+        }
 
         // Initialize the projectiles group
         this.projectiles = this.physics.add.group();
@@ -107,14 +115,16 @@ class BossFightGame extends Phaser.Scene {
             this
         );
 
-        // Enable collision between projectiles and barrier
-        this.physics.add.overlap(
-            this.projectiles,
-            this.barrier,
-            this.handleProjectileBarrierCollision as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
-            undefined,
-            this
-        );
+        // Enable collision between projectiles and barrier if it exists
+        if (this.barrier) {
+            this.physics.add.overlap(
+                this.projectiles,
+                this.barrier,
+                this.handleProjectileBarrierCollision as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
+                undefined,
+                this
+            );
+        }
 
         // Set up keyboard input for WASD and Shift
         this.keys = this.input.keyboard!.addKeys({
@@ -362,6 +372,9 @@ class BossFightGame extends Phaser.Scene {
 
         // Add to the projectiles group
         this.projectiles.add(projectile);
+
+        // Set data type for collision detection
+        projectile.setData('type', 'projectile');
     }
 
     update(time: number, delta: number) {
@@ -437,8 +450,10 @@ class BossFightGame extends Phaser.Scene {
                 this.scale.height - this.boss.height / 2
             );
 
-            // Update the barrier's position to stay with the boss
-            this.updateBarrierPosition();
+            // Update the barrier's position to stay with the boss if it exists
+            if (this.bossShieldEnabled && this.barrier) {
+                this.updateBarrierPosition();
+            }
 
             // Update projectiles to home in on the boss
             this.projectiles.children.iterate((proj) => {
