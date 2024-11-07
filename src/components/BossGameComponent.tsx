@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { initializeGame } from './BossFightGame';
 import Phaser from 'phaser';
+import axios from 'axios';
 
 const BossGameComponent: React.FC = () => {
     const gameContainerRef = useRef<HTMLDivElement>(null);
@@ -11,6 +12,12 @@ const BossGameComponent: React.FC = () => {
     const [gameEnded, setGameEnded] = useState(false);
     const [gameResult, setGameResult] = useState<'win' | 'lose' | null>(null);
 
+    // New state variables for user input
+    const [userName, setUserName] = useState('');
+    const [userId, setUserId] = useState('');
+    const [fightName, setFightName] = useState('');
+    const [fightId, setFightId] = useState('');
+
     // Game settings state variables
     const [dangerCircleSize, setDangerCircleSize] = useState<number>(50);
     const [playerProjectile1Cooldown, setPlayerProjectile1Cooldown] = useState(1000);
@@ -18,7 +25,7 @@ const BossGameComponent: React.FC = () => {
     const [dangerCircleDespawnInterval, setDangerCircleDespawnInterval] = useState(5000);
     const [dangerCircleWarningTime, setDangerCircleWarningTime] = useState(1000);
     const [bossMaxHealth, setBossMaxHealth] = useState(100);
-    const [bossShieldEnabled, setBossShieldEnabled] = useState(true); // New state variable
+    const [bossShieldEnabled, setBossShieldEnabled] = useState(true);
 
     const eventEmitter = useRef(new Phaser.Events.EventEmitter()).current;
 
@@ -33,7 +40,7 @@ const BossGameComponent: React.FC = () => {
             eventEmitter.emit('updateDangerCircleDespawnInterval', dangerCircleDespawnInterval);
             eventEmitter.emit('updateDangerCircleWarningTime', dangerCircleWarningTime);
             eventEmitter.emit('updateBossMaxHealth', bossMaxHealth);
-            eventEmitter.emit('updateBossShieldEnabled', bossShieldEnabled); // Emit the new setting
+            eventEmitter.emit('updateBossShieldEnabled', bossShieldEnabled);
 
             eventEmitter.on('gameEnd', (data: { result: 'win' | 'lose' }) => {
                 setGameEnded(true);
@@ -52,8 +59,41 @@ const BossGameComponent: React.FC = () => {
     }, [gameStarted]);
 
     const startGame = () => {
-        setGameEnded(false);
-        setGameStarted(true);
+        // Prepare the data to send
+        const data = {
+            danger_circle: {
+                size: dangerCircleSize,
+                spawn_interval: dangerCircleSpawnInterval,
+                despawn_interval: dangerCircleDespawnInterval,
+                warning_time: dangerCircleWarningTime,
+            },
+            boss: {
+                health: bossMaxHealth,
+                shield: bossShieldEnabled,
+            },
+            player_projectile_cooldown: playerProjectile1Cooldown,
+            submitter: {
+                id: userId,
+                name: userName,
+            },
+            fight_id: fightId,
+            fight_name: fightName,
+        };
+
+        // Send a POST request to your API endpoint
+        axios
+            .post('http://localhost:3420/fight-params-raw-submits', data)
+            .then((response: any) => {
+                console.log('Data posted successfully:', response.data);
+                // Start the game after successful POST
+                setGameEnded(false);
+                setGameStarted(true);
+            })
+            .catch((error: any) => {
+                console.error('Error posting data:', error);
+                // Optionally handle the error by notifying the user
+                alert('Error starting the game. Please try again.');
+            });
     };
 
     const restartGame = () => {
@@ -67,6 +107,56 @@ const BossGameComponent: React.FC = () => {
         <div>
             {!gameStarted && (
                 <div>
+                    {/* New input fields for user name, user ID, fight name, and fight ID */}
+                    <div style={{ marginBottom: '10px' }}>
+                        <label>
+                            User Name:
+                            <input
+                                type="text"
+                                value={userName}
+                                onChange={(e) => setUserName(e.target.value)}
+                                disabled={gameStarted}
+                                style={{ marginLeft: '10px' }}
+                            />
+                        </label>
+                    </div>
+                    <div style={{ marginBottom: '10px' }}>
+                        <label>
+                            User ID:
+                            <input
+                                type="text"
+                                value={userId}
+                                onChange={(e) => setUserId(e.target.value)}
+                                disabled={gameStarted}
+                                style={{ marginLeft: '10px' }}
+                            />
+                        </label>
+                    </div>
+                    <div style={{ marginBottom: '10px' }}>
+                        <label>
+                            Fight Name:
+                            <input
+                                type="text"
+                                value={fightName}
+                                onChange={(e) => setFightName(e.target.value)}
+                                disabled={gameStarted}
+                                style={{ marginLeft: '10px' }}
+                            />
+                        </label>
+                    </div>
+                    <div style={{ marginBottom: '10px' }}>
+                        <label>
+                            Fight ID:
+                            <input
+                                type="text"
+                                value={fightId}
+                                onChange={(e) => setFightId(e.target.value)}
+                                disabled={gameStarted}
+                                style={{ marginLeft: '10px' }}
+                            />
+                        </label>
+                    </div>
+                    {/* Existing input fields for game settings */}
                     <div style={{ marginBottom: '10px' }}>
                         <label>
                             Danger Circle Size:
@@ -147,7 +237,7 @@ const BossGameComponent: React.FC = () => {
                             />
                         </label>
                     </div>
-                    {/* New checkbox input for boss shield */}
+                    {/* Checkbox input for boss shield */}
                     <div style={{ marginBottom: '10px' }}>
                         <label>
                             Enable Boss Shield:

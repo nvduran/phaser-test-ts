@@ -1,3 +1,5 @@
+// BossFightGame.ts
+
 import Phaser from 'phaser';
 
 class BossFightGame extends Phaser.Scene {
