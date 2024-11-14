@@ -3,7 +3,7 @@
 import Phaser from 'phaser';
 
 class BossFightGame extends Phaser.Scene {
-    private player!: Phaser.GameObjects.Rectangle;
+    private player!: Phaser.GameObjects.Image;
     private boss!: Phaser.GameObjects.Rectangle;
     private keys!: any; // Updated to use WASD keys and Shift
     private barrier: Phaser.GameObjects.Image | null = null; // Barrier with rounded corners
@@ -76,7 +76,7 @@ class BossFightGame extends Phaser.Scene {
     create() {
         // Remove all existing time events
         this.time.removeAllEvents();
-
+    
         // Reset properties
         this.isPoweredUp = false;
         this.bossDirection = 0;
@@ -85,11 +85,49 @@ class BossFightGame extends Phaser.Scene {
         this.bossHealth = this.bossMaxHealth;
         this.projectileCooldown = 0;
         this.isBossDefeated = false;
-
-        // Set up the player character
-        this.player = this.add.rectangle(50, this.scale.height / 2, 20, 100, 0xffffff);
+    
+        // Set up the player character as a circle with gradient fill
+        const diameter = 50; // Adjust the size as needed
+        const x = 50;
+        const y = this.scale.height / 2;
+    
+        // Create an off-screen canvas for the gradient texture
+        const gradientTexture = this.textures.createCanvas('gradientCircle', diameter, diameter);
+    
+        // Get the canvas context
+        const ctx = gradientTexture!.getContext();
+    
+        // Create a radial gradient
+        const gradient = ctx.createRadialGradient(
+            diameter / 2, diameter / 2, 0,
+            diameter / 2, diameter / 2, diameter / 2
+        );
+    
+        // Define the gradient colors
+        gradient.addColorStop(0, '#FF0000'); // Center color (red)
+        gradient.addColorStop(1, '#0000FF'); // Edge color (blue)
+    
+        // Fill the circle with the gradient
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(diameter / 2, diameter / 2, diameter / 2, 0, 2 * Math.PI);
+        ctx.fill();
+    
+        // Finalize the texture
+        gradientTexture!.refresh();
+    
+        // Create the player image using the gradient texture
+        this.player = this.add.image(x, y, 'gradientCircle');
+        this.player.setOrigin(0.5, 0.5);
+    
+        // Add physics to the player
         this.physics.add.existing(this.player);
-
+        const playerBody = this.player.body as Phaser.Physics.Arcade.Body;
+        playerBody.setCircle(diameter / 2);
+    
+        // Adjust the physics body's offset to align correctly
+        playerBody.setOffset(-diameter / 2, -diameter / 2);
+    
         // Set up the boss character
         this.boss = this.add.rectangle(
             this.scale.width - 50,
@@ -99,15 +137,15 @@ class BossFightGame extends Phaser.Scene {
             0xffffff
         );
         this.physics.add.existing(this.boss);
-
+    
         // Create the barrier with rounded corners if enabled
         if (this.bossShieldEnabled) {
             this.createBarrier();
         }
-
+    
         // Initialize the projectiles group
         this.projectiles = this.physics.add.group();
-
+    
         // Enable collision between projectiles and boss
         this.physics.add.overlap(
             this.projectiles,
@@ -116,7 +154,7 @@ class BossFightGame extends Phaser.Scene {
             undefined,
             this
         );
-
+    
         // Enable collision between projectiles and barrier if it exists
         if (this.barrier) {
             this.physics.add.overlap(
@@ -127,7 +165,7 @@ class BossFightGame extends Phaser.Scene {
                 this
             );
         }
-
+    
         // Set up keyboard input for WASD and Shift
         this.keys = this.input.keyboard!.addKeys({
             up: 'W',
@@ -137,7 +175,7 @@ class BossFightGame extends Phaser.Scene {
             space: 'SPACE', // For launching the projectile
             shift: 'SHIFT', // For powering up the projectile
         });
-
+    
         // Listen for the spacebar to launch the projectile
         this.keys.space.on('down', () => {
             if (this.projectileCooldown <= 0) {
@@ -145,19 +183,19 @@ class BossFightGame extends Phaser.Scene {
                 this.projectileCooldown = this.playerProjectile1Cooldown; // Cooldown based on settings
             }
         });
-
+    
         // Listen for the Shift key to power up the projectile
         this.keys.shift.on('down', () => {
             this.isPoweredUp = true;
         });
-
+    
         // Initialize the boss health bar
         this.bossHealthBar = this.add.graphics();
         this.updateBossHealthBar(); // Draw the initial health bar
-
+    
         // Initialize the danger circles group as a dynamic group
         this.dangerCircles = this.physics.add.group();
-
+    
         // Set up collision between the player and danger circles
         this.physics.add.overlap(
             this.player,
@@ -166,7 +204,7 @@ class BossFightGame extends Phaser.Scene {
             undefined,
             this
         );
-
+    
         // Set up a timer to spawn danger circles
         this.time.addEvent({
             delay: this.dangerCircleSpawnInterval,
@@ -174,10 +212,11 @@ class BossFightGame extends Phaser.Scene {
             callbackScope: this,
             loop: true,
         });
-
+    
         // Initialize the projectile cooldown bar
         this.projectileCooldownBar = this.add.graphics();
     }
+    
 
     private createBarrier() {
         const barrierWidth = 50;
