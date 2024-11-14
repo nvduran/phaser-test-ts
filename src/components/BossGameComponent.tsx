@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { initializeGame } from './BossFightGame';
 import Phaser from 'phaser';
 import axios from 'axios';
+import io, { Socket } from 'socket.io-client';
 
 const BossGameComponent: React.FC = () => {
     const gameContainerRef = useRef<HTMLDivElement>(null);
@@ -18,6 +19,14 @@ const BossGameComponent: React.FC = () => {
     const [fightName, setFightName] = useState('');
     const [fightId, setFightId] = useState('');
 
+    // Multiplayer state
+    const [numPlayers, setNumPlayers] = useState<number>(1);
+    const [socket, setSocket] = useState<Socket | null>(null);
+    const [isHost, setIsHost] = useState(false);
+    const [otherPlayerConnected, setOtherPlayerConnected] = useState(false);
+    const [otherPlayerId, setOtherPlayerId] = useState('');
+    const [playerId, setPlayerId] = useState('');
+
     // Game settings state variables
     const [dangerCircleSize, setDangerCircleSize] = useState<number>(50);
     const [playerProjectile1Cooldown, setPlayerProjectile1Cooldown] = useState(1000);
@@ -31,7 +40,15 @@ const BossGameComponent: React.FC = () => {
 
     useEffect(() => {
         if (gameStarted && gameContainerRef.current) {
-            phaserGameRef.current = initializeGame('phaser-game-container', eventEmitter);
+            phaserGameRef.current = initializeGame(
+                'phaser-game-container',
+                eventEmitter,
+                socket,
+                isHost,
+                playerId,
+                otherPlayerId,
+                numPlayers
+            );
 
             // Emit initial settings to the game
             eventEmitter.emit('updateDangerCircleSize', dangerCircleSize);
@@ -45,7 +62,7 @@ const BossGameComponent: React.FC = () => {
             eventEmitter.on('gameEnd', (data: { result: 'win' | 'lose' }) => {
                 setGameEnded(true);
                 setGameResult(data.result);
-                setGameStarted(false); // Unlock settings after game ends
+                setGameStarted(false);
             });
         }
 
@@ -53,6 +70,10 @@ const BossGameComponent: React.FC = () => {
             if (phaserGameRef.current) {
                 phaserGameRef.current.destroy(true);
                 phaserGameRef.current = null;
+            }
+            if (socket) {
+                socket.disconnect();
+                setSocket(null);
             }
             eventEmitter.removeAllListeners();
         };
@@ -85,13 +106,53 @@ const BossGameComponent: React.FC = () => {
             .post('http://localhost:3420/fight-params-raw-submits', data)
             .then((response: any) => {
                 console.log('Data posted successfully:', response.data);
-                // Start the game after successful POST
-                setGameEnded(false);
-                setGameStarted(true);
+
+                // Generate a unique player ID
+                const newPlayerId = userId || `player_${Math.floor(Math.random() * 10000)}`;
+                setPlayerId(newPlayerId);
+
+                if (numPlayers === 1) {
+                    // Single-player mode: Start the game immediately
+                    setIsHost(true);
+                    setGameEnded(false);
+                    setGameStarted(true);
+                } else {
+                    // Multiplayer mode: Connect to the Socket.IO server
+                    const newSocket = io('http://localhost:3420'); // Adjust the URL as needed
+                    setSocket(newSocket);
+
+                    newSocket.emit('joinGame', { playerId: newPlayerId });
+
+                    newSocket.on('gameStart', (data: any) => {
+                        setIsHost(data.isHost);
+                        setOtherPlayerId(data.otherPlayerId);
+                        setOtherPlayerConnected(true);
+                        setGameEnded(false);
+                        setGameStarted(true);
+                    });
+
+                    newSocket.on('otherPlayerJoined', (data: any) => {
+                        if (!otherPlayerConnected) {
+                            setOtherPlayerId(data.playerId);
+                            setOtherPlayerConnected(true);
+                            newSocket.emit('startGame', {
+                                isHost: true,
+                                otherPlayerId: data.playerId,
+                            });
+                            setIsHost(true);
+                            setGameEnded(false);
+                            setGameStarted(true);
+                        }
+                    });
+
+                    // Handle disconnection
+                    newSocket.on('disconnect', () => {
+                        setOtherPlayerConnected(false);
+                    });
+                }
             })
             .catch((error: any) => {
                 console.error('Error posting data:', error);
-                // Optionally handle the error by notifying the user
                 alert('Error starting the game. Please try again.');
             });
     };
@@ -101,12 +162,31 @@ const BossGameComponent: React.FC = () => {
         setGameEnded(false);
         setGameStarted(false);
         setGameResult(null);
+        setIsHost(false);
+        setOtherPlayerConnected(false);
+        setOtherPlayerId('');
     };
 
     return (
         <div>
             {!gameStarted && (
                 <div>
+                    {/* Number of Players Selection */}
+                    <div style={{ marginBottom: '10px' }}>
+                        <label>
+                            Number of Players:
+                            <select
+                                value={numPlayers}
+                                onChange={(e) => setNumPlayers(Number(e.target.value))}
+                                disabled={gameStarted}
+                                style={{ marginLeft: '10px' }}
+                            >
+                                <option value={1}>1 Player</option>
+                                <option value={2}>2 Players</option>
+                            </select>
+                        </label>
+                    </div>
+
                     {/* New input fields for user name, user ID, fight name, and fight ID */}
                     <div style={{ marginBottom: '10px' }}>
                         <label>
