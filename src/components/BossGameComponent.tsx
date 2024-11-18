@@ -124,25 +124,13 @@ const BossGameComponent: React.FC = () => {
                     newSocket.emit('joinGame', { playerId: newPlayerId });
 
                     newSocket.on('gameStart', (data: any) => {
+                        console.log('Game started:', data);
+                        console.log('My playerId:', newPlayerId);
                         setIsHost(data.isHost);
                         setOtherPlayerId(data.otherPlayerId);
                         setOtherPlayerConnected(true);
                         setGameEnded(false);
                         setGameStarted(true);
-                    });
-
-                    newSocket.on('otherPlayerJoined', (data: any) => {
-                        if (!otherPlayerConnected) {
-                            setOtherPlayerId(data.playerId);
-                            setOtherPlayerConnected(true);
-                            newSocket.emit('startGame', {
-                                isHost: true,
-                                otherPlayerId: data.playerId,
-                            });
-                            setIsHost(true);
-                            setGameEnded(false);
-                            setGameStarted(true);
-                        }
                     });
 
                     // Handle disconnection

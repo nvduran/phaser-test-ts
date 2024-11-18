@@ -251,6 +251,7 @@ class BossFightGame extends Phaser.Scene {
         if (this.socket && this.numPlayers === 2) {
             // Listen for updates from other players
             this.socket.on('playerMoved', (data) => {
+                console.log('Received playerMoved event:', data);
                 if (data.playerId === this.otherPlayerId) {
                     this.updateOtherPlayer(data);
                 }
@@ -652,6 +653,7 @@ class BossFightGame extends Phaser.Scene {
 
     private updateOtherPlayer(data: any) {
         if (this.numPlayers === 2 && this.otherPlayer) {
+            console.log('Updating other player position:', data);
             // Smoothly interpolate to the new position
             this.tweens.add({
                 targets: this.otherPlayer,
