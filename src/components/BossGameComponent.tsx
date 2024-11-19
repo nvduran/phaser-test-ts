@@ -5,23 +5,24 @@ import { initializeGame } from './BossFightGame';
 import Phaser from 'phaser';
 import axios from 'axios';
 import io, { Socket } from 'socket.io-client';
+import { useNavigate } from 'react-router-dom';
 
 interface BossGameProps {
   userData: {
     displayName: string;
     userId: string;
-  };
+  } | null; // Allow userData to be null
 }
 
 const BossGameComponent: React.FC<BossGameProps> = ({ userData }) => {
-    console.log(userData);
+  const navigate = useNavigate();
   const gameContainerRef = useRef<HTMLDivElement>(null);
   const phaserGameRef = useRef<Phaser.Game | null>(null);
   const [gameStarted, setGameStarted] = useState(false);
   const [gameEnded, setGameEnded] = useState(false);
   const [gameResult, setGameResult] = useState<'win' | 'lose' | null>(null);
 
-  // Removed state variables for user input
+  // State variables for user input
   const [fightName, setFightName] = useState('');
   const [fightId, setFightId] = useState('');
 
@@ -43,6 +44,18 @@ const BossGameComponent: React.FC<BossGameProps> = ({ userData }) => {
   const [bossShieldEnabled, setBossShieldEnabled] = useState(true);
 
   const eventEmitter = useRef(new Phaser.Events.EventEmitter()).current;
+
+  useEffect(() => {
+    if (userData === null) {
+      // User data is still loading; do nothing
+      return;
+    }
+
+    if (!userData.userId || !userData.displayName) {
+      // Redirect to login if user data is missing
+      navigate('/login');
+    }
+  }, [userData, navigate]);
 
   useEffect(() => {
     if (gameStarted && gameContainerRef.current) {
@@ -87,7 +100,13 @@ const BossGameComponent: React.FC<BossGameProps> = ({ userData }) => {
   }, [gameStarted]);
 
   const startGame = () => {
+    if (!userData) {
+      console.error('User data is missing');
+      return;
+    }
+
     console.log(userData.userId, userData.displayName);
+
     // Prepare the data to send
     const data = {
       danger_circle: {
@@ -165,175 +184,181 @@ const BossGameComponent: React.FC<BossGameProps> = ({ userData }) => {
 
   return (
     <div>
-      {!gameStarted && (
-        <div>
-          {/* Number of Players Selection */}
-          <div style={{ marginBottom: '10px' }}>
-            <label>
-              Number of Players:
-              <select
-                value={numPlayers}
-                onChange={(e) => setNumPlayers(Number(e.target.value))}
-                disabled={gameStarted}
-                style={{ marginLeft: '10px' }}
+      {userData === null ? (
+        <div>Loading...</div>
+      ) : (
+        <>
+          {!gameStarted && (
+            <div>
+              {/* Number of Players Selection */}
+              <div style={{ marginBottom: '10px' }}>
+                <label>
+                  Number of Players:
+                  <select
+                    value={numPlayers}
+                    onChange={(e) => setNumPlayers(Number(e.target.value))}
+                    disabled={gameStarted}
+                    style={{ marginLeft: '10px' }}
+                  >
+                    <option value={1}>1 Player</option>
+                    <option value={2}>2 Players</option>
+                  </select>
+                </label>
+              </div>
+
+              {/* Input fields for fight name and fight ID */}
+              <div style={{ marginBottom: '10px' }}>
+                <label>
+                  Fight Name:
+                  <input
+                    type="text"
+                    value={fightName}
+                    onChange={(e) => setFightName(e.target.value)}
+                    disabled={gameStarted}
+                    style={{ marginLeft: '10px' }}
+                  />
+                </label>
+              </div>
+              <div style={{ marginBottom: '10px' }}>
+                <label>
+                  Fight ID:
+                  <input
+                    type="text"
+                    value={fightId}
+                    onChange={(e) => setFightId(e.target.value)}
+                    disabled={gameStarted}
+                    style={{ marginLeft: '10px' }}
+                  />
+                </label>
+              </div>
+
+              {/* Existing input fields for game settings */}
+              <div style={{ marginBottom: '10px' }}>
+                <label>
+                  Danger Circle Size:
+                  <input
+                    type="number"
+                    value={dangerCircleSize}
+                    onChange={(e) => setDangerCircleSize(Number(e.target.value))}
+                    disabled={gameStarted}
+                    style={{ marginLeft: '10px' }}
+                  />
+                </label>
+              </div>
+              <div style={{ marginBottom: '10px' }}>
+                <label>
+                  Danger Circle Spawn Interval (ms):
+                  <input
+                    type="number"
+                    value={dangerCircleSpawnInterval}
+                    onChange={(e) =>
+                      setDangerCircleSpawnInterval(Number(e.target.value))
+                    }
+                    disabled={gameStarted}
+                    style={{ marginLeft: '10px' }}
+                  />
+                </label>
+              </div>
+              <div style={{ marginBottom: '10px' }}>
+                <label>
+                  Danger Circle Despawn Interval (ms):
+                  <input
+                    type="number"
+                    value={dangerCircleDespawnInterval}
+                    onChange={(e) =>
+                      setDangerCircleDespawnInterval(Number(e.target.value))
+                    }
+                    disabled={gameStarted}
+                    style={{ marginLeft: '10px' }}
+                  />
+                </label>
+              </div>
+              <div style={{ marginBottom: '10px' }}>
+                <label>
+                  Danger Circle Warning Time (ms):
+                  <input
+                    type="number"
+                    value={dangerCircleWarningTime}
+                    onChange={(e) =>
+                      setDangerCircleWarningTime(Number(e.target.value))
+                    }
+                    disabled={gameStarted}
+                    style={{ marginLeft: '10px' }}
+                  />
+                </label>
+              </div>
+              <div style={{ marginBottom: '10px' }}>
+                <label>
+                  Player Projectile Cooldown (ms):
+                  <input
+                    type="number"
+                    value={playerProjectile1Cooldown}
+                    onChange={(e) =>
+                      setPlayerProjectile1Cooldown(Number(e.target.value))
+                    }
+                    disabled={gameStarted}
+                    style={{ marginLeft: '10px' }}
+                  />
+                </label>
+              </div>
+              <div style={{ marginBottom: '10px' }}>
+                <label>
+                  Boss Health:
+                  <input
+                    type="number"
+                    value={bossMaxHealth}
+                    onChange={(e) => setBossMaxHealth(Number(e.target.value))}
+                    disabled={gameStarted}
+                    style={{ marginLeft: '10px' }}
+                  />
+                </label>
+              </div>
+              {/* Checkbox input for boss shield */}
+              <div style={{ marginBottom: '10px' }}>
+                <label>
+                  Enable Boss Shield:
+                  <input
+                    type="checkbox"
+                    checked={bossShieldEnabled}
+                    onChange={(e) => setBossShieldEnabled(e.target.checked)}
+                    disabled={gameStarted}
+                    style={{ marginLeft: '10px' }}
+                  />
+                </label>
+              </div>
+              <button onClick={startGame}>Start Game</button>
+            </div>
+          )}
+
+          <div style={{ position: 'relative', width: '800px', height: '600px' }}>
+            <div
+              id="phaser-game-container"
+              ref={gameContainerRef}
+              style={{ width: '800px', height: '600px' }}
+            />
+            {gameEnded && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '800px',
+                  height: '600px',
+                  backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  color: '#fff',
+                  flexDirection: 'column',
+                }}
               >
-                <option value={1}>1 Player</option>
-                <option value={2}>2 Players</option>
-              </select>
-            </label>
+                <h1>{gameResult === 'win' ? 'You Win!' : 'Game Over'}</h1>
+                <button onClick={restartGame}>Restart Game</button>
+              </div>
+            )}
           </div>
-
-          {/* Input fields for fight name and fight ID */}
-          <div style={{ marginBottom: '10px' }}>
-            <label>
-              Fight Name:
-              <input
-                type="text"
-                value={fightName}
-                onChange={(e) => setFightName(e.target.value)}
-                disabled={gameStarted}
-                style={{ marginLeft: '10px' }}
-              />
-            </label>
-          </div>
-          <div style={{ marginBottom: '10px' }}>
-            <label>
-              Fight ID:
-              <input
-                type="text"
-                value={fightId}
-                onChange={(e) => setFightId(e.target.value)}
-                disabled={gameStarted}
-                style={{ marginLeft: '10px' }}
-              />
-            </label>
-          </div>
-
-          {/* Existing input fields for game settings */}
-          <div style={{ marginBottom: '10px' }}>
-            <label>
-              Danger Circle Size:
-              <input
-                type="number"
-                value={dangerCircleSize}
-                onChange={(e) => setDangerCircleSize(Number(e.target.value))}
-                disabled={gameStarted}
-                style={{ marginLeft: '10px' }}
-              />
-            </label>
-          </div>
-          <div style={{ marginBottom: '10px' }}>
-            <label>
-              Danger Circle Spawn Interval (ms):
-              <input
-                type="number"
-                value={dangerCircleSpawnInterval}
-                onChange={(e) =>
-                  setDangerCircleSpawnInterval(Number(e.target.value))
-                }
-                disabled={gameStarted}
-                style={{ marginLeft: '10px' }}
-              />
-            </label>
-          </div>
-          <div style={{ marginBottom: '10px' }}>
-            <label>
-              Danger Circle Despawn Interval (ms):
-              <input
-                type="number"
-                value={dangerCircleDespawnInterval}
-                onChange={(e) =>
-                  setDangerCircleDespawnInterval(Number(e.target.value))
-                }
-                disabled={gameStarted}
-                style={{ marginLeft: '10px' }}
-              />
-            </label>
-          </div>
-          <div style={{ marginBottom: '10px' }}>
-            <label>
-              Danger Circle Warning Time (ms):
-              <input
-                type="number"
-                value={dangerCircleWarningTime}
-                onChange={(e) =>
-                  setDangerCircleWarningTime(Number(e.target.value))
-                }
-                disabled={gameStarted}
-                style={{ marginLeft: '10px' }}
-              />
-            </label>
-          </div>
-          <div style={{ marginBottom: '10px' }}>
-            <label>
-              Player Projectile Cooldown (ms):
-              <input
-                type="number"
-                value={playerProjectile1Cooldown}
-                onChange={(e) =>
-                  setPlayerProjectile1Cooldown(Number(e.target.value))
-                }
-                disabled={gameStarted}
-                style={{ marginLeft: '10px' }}
-              />
-            </label>
-          </div>
-          <div style={{ marginBottom: '10px' }}>
-            <label>
-              Boss Health:
-              <input
-                type="number"
-                value={bossMaxHealth}
-                onChange={(e) => setBossMaxHealth(Number(e.target.value))}
-                disabled={gameStarted}
-                style={{ marginLeft: '10px' }}
-              />
-            </label>
-          </div>
-          {/* Checkbox input for boss shield */}
-          <div style={{ marginBottom: '10px' }}>
-            <label>
-              Enable Boss Shield:
-              <input
-                type="checkbox"
-                checked={bossShieldEnabled}
-                onChange={(e) => setBossShieldEnabled(e.target.checked)}
-                disabled={gameStarted}
-                style={{ marginLeft: '10px' }}
-              />
-            </label>
-          </div>
-          <button onClick={startGame}>Start Game</button>
-        </div>
+        </>
       )}
-
-      <div style={{ position: 'relative', width: '800px', height: '600px' }}>
-        <div
-          id="phaser-game-container"
-          ref={gameContainerRef}
-          style={{ width: '800px', height: '600px' }}
-        />
-        {gameEnded && (
-          <div
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '800px',
-              height: '600px',
-              backgroundColor: 'rgba(0, 0, 0, 0.7)',
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              color: '#fff',
-              flexDirection: 'column',
-            }}
-          >
-            <h1>{gameResult === 'win' ? 'You Win!' : 'Game Over'}</h1>
-            <button onClick={restartGame}>Restart Game</button>
-          </div>
-        )}
-      </div>
     </div>
   );
 };
